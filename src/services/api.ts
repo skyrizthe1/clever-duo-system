@@ -1,10 +1,10 @@
-
 // Mock API service that simulates backend functionality
 import { toast } from "sonner";
 
 // Types
 export type TaskStatus = "todo" | "inprogress" | "review" | "done";
 export type TaskPriority = "low" | "medium" | "high";
+export type UserRole = "admin" | "teacher" | "student";
 
 export interface Task {
   id: string;
@@ -23,6 +23,30 @@ export interface User {
   name: string;
   email: string;
   avatar?: string;
+  role: UserRole;
+}
+
+export interface Question {
+  id: string;
+  type: 'single-choice' | 'multiple-choice' | 'fill-blank' | 'short-answer';
+  content: string;
+  options?: string[];
+  correctAnswer: string | string[];
+  points: number;
+  category: string;
+  createdBy: string;
+}
+
+export interface Exam {
+  id: string;
+  title: string;
+  description: string;
+  duration: number; // minutes
+  startTime: Date;
+  endTime: Date;
+  questions: string[]; // Question IDs
+  createdBy: string;
+  published: boolean;
 }
 
 // Mock backend data
@@ -70,18 +94,32 @@ let tasks: Task[] = [
 let users: User[] = [
   {
     id: "1",
-    name: "John Doe",
-    email: "john@example.com"
+    name: "Admin User",
+    email: "admin@example.com",
+    role: "admin"
   },
   {
     id: "2",
-    name: "Jane Smith",
-    email: "jane@example.com"
+    name: "Teacher User",
+    email: "teacher@example.com",
+    role: "teacher"
+  },
+  {
+    id: "3",
+    name: "Student User",
+    email: "student@example.com",
+    role: "student"
   }
 ];
 
+let questions: Question[] = [];
+let exams: Exam[] = [];
+
 // Simulate API latency
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+// Current logged in user - null when not authenticated
+let currentUser: User | null = null;
 
 // API functions
 export async function getTasks(): Promise<Task[]> {
@@ -91,7 +129,18 @@ export async function getTasks(): Promise<Task[]> {
 
 export async function getUsers(): Promise<User[]> {
   await delay(300);
-  return [...users];
+  
+  // Only admins can see all users
+  if (currentUser && currentUser.role === 'admin') {
+    return [...users];
+  }
+  
+  // Others can only see themselves
+  if (currentUser) {
+    return [currentUser];
+  }
+  
+  throw new Error("Unauthorized access");
 }
 
 export async function createTask(task: Omit<Task, "id" | "createdAt">): Promise<Task> {
@@ -136,9 +185,7 @@ export async function deleteTask(id: string): Promise<void> {
   toast.success("Task deleted successfully");
 }
 
-// Authentication mock
-let currentUser: User | null = users[0]; // Auto logged in for demo
-
+// Authentication
 export async function login(email: string, password: string): Promise<User> {
   await delay(800);
   const user = users.find(u => u.email === email);
@@ -163,4 +210,143 @@ export async function logout(): Promise<void> {
 export async function getCurrentUser(): Promise<User | null> {
   await delay(300);
   return currentUser;
+}
+
+// Question management functions
+export async function getQuestions(): Promise<Question[]> {
+  await delay(500);
+  
+  if (!currentUser) {
+    throw new Error("Unauthorized access");
+  }
+  
+  return [...questions];
+}
+
+export async function createQuestion(question: Omit<Question, "id">): Promise<Question> {
+  await delay(500);
+  
+  if (!currentUser || (currentUser.role !== 'admin' && currentUser.role !== 'teacher')) {
+    throw new Error("Unauthorized access");
+  }
+  
+  const newQuestion: Question = {
+    ...question,
+    id: Math.random().toString(36).substr(2, 9),
+  };
+  
+  questions = [...questions, newQuestion];
+  toast.success("Question created successfully");
+  return newQuestion;
+}
+
+export async function updateQuestion(id: string, updates: Partial<Question>): Promise<Question> {
+  await delay(400);
+  
+  if (!currentUser || (currentUser.role !== 'admin' && currentUser.role !== 'teacher')) {
+    throw new Error("Unauthorized access");
+  }
+  
+  const questionIndex = questions.findIndex(q => q.id === id);
+  
+  if (questionIndex === -1) {
+    toast.error("Question not found");
+    throw new Error("Question not found");
+  }
+  
+  const updatedQuestion = { ...questions[questionIndex], ...updates };
+  questions = [...questions.slice(0, questionIndex), updatedQuestion, ...questions.slice(questionIndex + 1)];
+  
+  toast.success("Question updated successfully");
+  return updatedQuestion;
+}
+
+export async function deleteQuestion(id: string): Promise<void> {
+  await delay(400);
+  
+  if (!currentUser || (currentUser.role !== 'admin' && currentUser.role !== 'teacher')) {
+    throw new Error("Unauthorized access");
+  }
+  
+  const questionIndex = questions.findIndex(q => q.id === id);
+  
+  if (questionIndex === -1) {
+    toast.error("Question not found");
+    throw new Error("Question not found");
+  }
+  
+  questions = [...questions.slice(0, questionIndex), ...questions.slice(questionIndex + 1)];
+  toast.success("Question deleted successfully");
+}
+
+// Exam management functions
+export async function getExams(): Promise<Exam[]> {
+  await delay(500);
+  
+  if (!currentUser) {
+    throw new Error("Unauthorized access");
+  }
+  
+  // Students can only see published exams
+  if (currentUser.role === 'student') {
+    return exams.filter(exam => exam.published);
+  }
+  
+  return [...exams];
+}
+
+export async function createExam(exam: Omit<Exam, "id">): Promise<Exam> {
+  await delay(500);
+  
+  if (!currentUser || (currentUser.role !== 'admin' && currentUser.role !== 'teacher')) {
+    throw new Error("Unauthorized access");
+  }
+  
+  const newExam: Exam = {
+    ...exam,
+    id: Math.random().toString(36).substr(2, 9),
+  };
+  
+  exams = [...exams, newExam];
+  toast.success("Exam created successfully");
+  return newExam;
+}
+
+export async function updateExam(id: string, updates: Partial<Exam>): Promise<Exam> {
+  await delay(400);
+  
+  if (!currentUser || (currentUser.role !== 'admin' && currentUser.role !== 'teacher')) {
+    throw new Error("Unauthorized access");
+  }
+  
+  const examIndex = exams.findIndex(e => e.id === id);
+  
+  if (examIndex === -1) {
+    toast.error("Exam not found");
+    throw new Error("Exam not found");
+  }
+  
+  const updatedExam = { ...exams[examIndex], ...updates };
+  exams = [...exams.slice(0, examIndex), updatedExam, ...exams.slice(examIndex + 1)];
+  
+  toast.success("Exam updated successfully");
+  return updatedExam;
+}
+
+export async function deleteExam(id: string): Promise<void> {
+  await delay(400);
+  
+  if (!currentUser || (currentUser.role !== 'admin' && currentUser.role !== 'teacher')) {
+    throw new Error("Unauthorized access");
+  }
+  
+  const examIndex = exams.findIndex(e => e.id === id);
+  
+  if (examIndex === -1) {
+    toast.error("Exam not found");
+    throw new Error("Exam not found");
+  }
+  
+  exams = [...exams.slice(0, examIndex), ...exams.slice(examIndex + 1)];
+  toast.success("Exam deleted successfully");
 }
