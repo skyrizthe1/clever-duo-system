@@ -1,3 +1,4 @@
+
 // Mock API service that simulates backend functionality
 import { toast } from "sonner";
 
@@ -23,6 +24,13 @@ export interface User {
   name: string;
   email: string;
   avatar?: string;
+  role: UserRole;
+}
+
+export interface RegisterUserData {
+  name: string;
+  email: string;
+  password: string;
   role: UserRole;
 }
 
@@ -120,6 +128,30 @@ const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 // Current logged in user - null when not authenticated
 let currentUser: User | null = null;
+
+// User Registration
+export async function registerUser(userData: RegisterUserData): Promise<User> {
+  await delay(800);
+  
+  // Check if email is already registered
+  const existingUser = users.find(u => u.email === userData.email);
+  if (existingUser) {
+    toast.error("Email already registered");
+    throw new Error("Email already registered");
+  }
+  
+  // Create new user
+  const newUser: User = {
+    id: Math.random().toString(36).substr(2, 9),
+    name: userData.name,
+    email: userData.email,
+    role: userData.role
+  };
+  
+  users = [...users, newUser];
+  toast.success("Registration successful!");
+  return newUser;
+}
 
 // API functions
 export async function getTasks(): Promise<Task[]> {

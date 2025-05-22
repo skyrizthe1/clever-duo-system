@@ -22,14 +22,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { UserRole } from '@/services/api';
+import { registerUser, UserRole } from '@/services/api';
 
 const formSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
   email: z.string().email('Invalid email address'),
   password: z.string().min(6, 'Password must be at least 6 characters'),
   confirmPassword: z.string(),
-  role: z.enum(['student', 'teacher']).default('student'),
+  role: z.enum(['student', 'teacher', 'admin']).default('student'),
 }).refine(data => data.password === data.confirmPassword, {
   message: "Passwords don't match",
   path: ["confirmPassword"],
@@ -46,14 +46,18 @@ const Register = () => {
       email: '',
       password: '',
       confirmPassword: '',
-      role: 'student' as UserRole,
+      role: 'student',
     },
   });
 
   const onSubmit = async (values: FormValues) => {
     try {
-      // In a real app, we would send these values to the backend
-      // Since we have a mock API, we'll just simulate a successful registration
+      await registerUser({
+        name: values.name,
+        email: values.email,
+        password: values.password,
+        role: values.role as UserRole,
+      });
       toast.success('Registration successful! You can now login.');
       navigate('/login');
     } catch (error) {
@@ -145,6 +149,7 @@ const Register = () => {
                     <SelectContent>
                       <SelectItem value="student">Student</SelectItem>
                       <SelectItem value="teacher">Teacher</SelectItem>
+                      <SelectItem value="admin">Admin</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />

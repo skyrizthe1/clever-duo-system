@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
@@ -71,10 +72,15 @@ export function TaskForm({ task, onSuccess }: TaskFormProps) {
           tags: tagsArray,
         });
       } else {
-        // Create new task
+        // Create new task - fix the type error by ensuring all required properties
         await createTask({
-          ...values,
+          title: values.title,
+          description: values.description,
+          status: values.status,
+          priority: values.priority,
           tags: tagsArray,
+          assignedTo: undefined,
+          dueDate: undefined
         });
       }
       
