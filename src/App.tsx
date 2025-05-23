@@ -12,6 +12,9 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Questions from "./pages/Questions";
 import Exams from "./pages/Exams";
+import MyExams from "./pages/MyExams";
+import Results from "./pages/Results";
+import Grading from "./pages/Grading";
 
 const queryClient = new QueryClient();
 
@@ -33,6 +36,34 @@ const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   return <>{children}</>;
 };
 
+// Role-based guard component
+const RoleRoute = ({ 
+  children, 
+  allowedRoles 
+}: { 
+  children: React.ReactNode, 
+  allowedRoles: string[] 
+}) => {
+  const { data: currentUser, isLoading } = useQuery({
+    queryKey: ['currentUser'],
+    queryFn: getCurrentUser
+  });
+
+  if (isLoading) {
+    return <div className="flex h-screen items-center justify-center">Loading...</div>;
+  }
+
+  if (!currentUser) {
+    return <Navigate to="/login" />;
+  }
+
+  if (!allowedRoles.includes(currentUser.role)) {
+    return <Navigate to="/" />;
+  }
+
+  return <>{children}</>;
+};
+
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
@@ -48,14 +79,29 @@ const App = () => (
             </ProtectedRoute>
           } />
           <Route path="/questions" element={
-            <ProtectedRoute>
+            <RoleRoute allowedRoles={['admin', 'teacher']}>
               <Questions />
-            </ProtectedRoute>
+            </RoleRoute>
           } />
           <Route path="/exams" element={
-            <ProtectedRoute>
+            <RoleRoute allowedRoles={['admin', 'teacher']}>
               <Exams />
-            </ProtectedRoute>
+            </RoleRoute>
+          } />
+          <Route path="/my-exams" element={
+            <RoleRoute allowedRoles={['student']}>
+              <MyExams />
+            </RoleRoute>
+          } />
+          <Route path="/results" element={
+            <RoleRoute allowedRoles={['student']}>
+              <Results />
+            </RoleRoute>
+          } />
+          <Route path="/grading" element={
+            <RoleRoute allowedRoles={['admin', 'teacher']}>
+              <Grading />
+            </RoleRoute>
           } />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />

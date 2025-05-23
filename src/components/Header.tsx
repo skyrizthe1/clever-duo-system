@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from './ui/button';
 import { getCurrentUser, logout, UserRole } from '@/services/api';
@@ -19,6 +19,7 @@ import { toast } from 'sonner';
 
 export function Header() {
   const navigate = useNavigate();
+  const location = useLocation();
   const queryClient = useQueryClient();
   const [isMenuOpen, setIsMenuOpen] = React.useState(false);
   
@@ -57,6 +58,7 @@ export function Header() {
     if (role === 'admin' || role === 'teacher') {
       items.push({ name: 'Questions', path: '/questions' });
       items.push({ name: 'Exams', path: '/exams' });
+      items.push({ name: 'Grading', path: '/grading' });
     }
     
     if (role === 'student') {
@@ -68,6 +70,10 @@ export function Header() {
   };
   
   const navItems = getNavItems(user?.role);
+  
+  const isActiveLink = (path: string) => {
+    return location.pathname === path;
+  };
   
   return (
     <header className="bg-background border-b sticky top-0 z-30">
@@ -85,7 +91,11 @@ export function Header() {
               <Link 
                 key={item.path} 
                 to={item.path}
-                className="text-sm font-medium hover:text-primary transition-colors"
+                className={`text-sm font-medium transition-colors ${
+                  isActiveLink(item.path) 
+                    ? 'text-primary font-bold'
+                    : 'hover:text-primary'
+                }`}
               >
                 {item.name}
               </Link>
@@ -116,7 +126,7 @@ export function Header() {
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate('/profile')}>
                   Profile
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={handleLogout}>
@@ -150,7 +160,9 @@ export function Header() {
                     key={item.path} 
                     to={item.path}
                     onClick={() => setIsMenuOpen(false)}
-                    className="block py-2 text-lg font-medium"
+                    className={`block py-2 text-lg font-medium ${
+                      isActiveLink(item.path) ? 'text-primary' : ''
+                    }`}
                   >
                     {item.name}
                   </Link>
