@@ -11,6 +11,7 @@ import NotFound from "./pages/NotFound";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Questions from "./pages/Questions";
+import Exams from "./pages/Exams";
 
 const queryClient = new QueryClient();
 
@@ -49,6 +50,11 @@ const App = () => (
           <Route path="/questions" element={
             <ProtectedRoute>
               <Questions />
+            </ProtectedRoute>
+          } />
+          <Route path="/exams" element={
+            <ProtectedRoute>
+              <Exams />
             </ProtectedRoute>
           } />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

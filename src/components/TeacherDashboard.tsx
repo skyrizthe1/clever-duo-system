@@ -5,8 +5,11 @@ import { getExams, getQuestions } from '@/services/api';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { FileText, Clock } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 export function TeacherDashboard() {
+  const navigate = useNavigate();
+  
   const { data: questions = [] } = useQuery({
     queryKey: ['questions'],
     queryFn: getQuestions
@@ -29,7 +32,14 @@ export function TeacherDashboard() {
             <div className="text-2xl font-bold">{questions.length}</div>
           </CardContent>
           <CardFooter>
-            <Button variant="outline" size="sm" className="w-full">Manage Questions</Button>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="w-full"
+              onClick={() => navigate('/questions')}
+            >
+              Manage Questions
+            </Button>
           </CardFooter>
         </Card>
         
@@ -45,14 +55,24 @@ export function TeacherDashboard() {
             </p>
           </CardContent>
           <CardFooter>
-            <Button variant="outline" size="sm" className="w-full">Manage Exams</Button>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="w-full"
+              onClick={() => navigate('/exams')}
+            >
+              Manage Exams
+            </Button>
           </CardFooter>
         </Card>
       </div>
       
       <h2 className="text-xl font-semibold mt-8 mb-4">Quick Actions</h2>
       <div className="grid gap-4 md:grid-cols-3">
-        <Card className="cursor-pointer hover:bg-gray-50">
+        <Card 
+          className="cursor-pointer hover:bg-gray-50"
+          onClick={() => navigate('/questions?action=create')}
+        >
           <CardHeader>
             <CardTitle className="text-md">Create Question</CardTitle>
           </CardHeader>
@@ -61,7 +81,10 @@ export function TeacherDashboard() {
           </CardContent>
         </Card>
         
-        <Card className="cursor-pointer hover:bg-gray-50">
+        <Card 
+          className="cursor-pointer hover:bg-gray-50"
+          onClick={() => navigate('/exams?action=create')}
+        >
           <CardHeader>
             <CardTitle className="text-md">Create Exam</CardTitle>
           </CardHeader>
@@ -70,7 +93,10 @@ export function TeacherDashboard() {
           </CardContent>
         </Card>
         
-        <Card className="cursor-pointer hover:bg-gray-50">
+        <Card 
+          className="cursor-pointer hover:bg-gray-50"
+          onClick={() => navigate('/grading')}
+        >
           <CardHeader>
             <CardTitle className="text-md">Grade Submissions</CardTitle>
           </CardHeader>
@@ -106,7 +132,13 @@ export function TeacherDashboard() {
                 </div>
               </CardContent>
               <CardFooter className="flex justify-between">
-                <Button variant="outline" size="sm">Edit</Button>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => navigate(`/exams/${exam.id}`)}
+                >
+                  Edit
+                </Button>
                 {exam.published ? (
                   <Button variant="secondary" size="sm">Unpublish</Button>
                 ) : (
