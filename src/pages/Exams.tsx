@@ -7,9 +7,13 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Clock, Calendar, Users } from 'lucide-react';
 import { format } from 'date-fns';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { toast } from 'sonner';
 
 const Exams = () => {
   const [filter, setFilter] = useState<'all' | 'published' | 'unpublished'>('all');
+  const navigate = useNavigate();
+  const location = useLocation();
   
   const { data: exams = [] } = useQuery({
     queryKey: ['exams'],
@@ -29,6 +33,25 @@ const Exams = () => {
   
   const isTeacherOrAdmin = currentUser?.role === 'teacher' || currentUser?.role === 'admin';
   
+  // Check if we need to show the exam creation dialog
+  React.useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get('action') === 'create') {
+      handleCreateExam();
+    }
+  }, [location]);
+  
+  const handleCreateExam = () => {
+    // For now, just show a toast to acknowledge the click
+    // In a real implementation, this would open a dialog or navigate to a form
+    toast.info('Create Exam functionality will be implemented soon');
+    
+    // Clear the action from the URL
+    if (location.search.includes('action=create')) {
+      navigate('/exams');
+    }
+  };
+  
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <Header />
@@ -36,7 +59,7 @@ const Exams = () => {
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-2xl font-bold">Exams</h1>
           {isTeacherOrAdmin && (
-            <Button>Create New Exam</Button>
+            <Button onClick={handleCreateExam}>Create New Exam</Button>
           )}
         </div>
         

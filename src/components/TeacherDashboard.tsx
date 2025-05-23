@@ -69,41 +69,32 @@ export function TeacherDashboard() {
       
       <h2 className="text-xl font-semibold mt-8 mb-4">Quick Actions</h2>
       <div className="grid gap-4 md:grid-cols-3">
-        <Card 
-          className="cursor-pointer hover:bg-gray-50"
+        <Button 
+          variant="outline"
+          className="h-auto p-6 flex flex-col items-start hover:bg-gray-50"
           onClick={() => navigate('/questions?action=create')}
         >
-          <CardHeader>
-            <CardTitle className="text-md">Create Question</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-muted-foreground">Add a new question to the question bank</p>
-          </CardContent>
-        </Card>
+          <h3 className="text-md font-semibold mb-2">Create Question</h3>
+          <p className="text-muted-foreground text-left">Add a new question to the question bank</p>
+        </Button>
         
-        <Card 
-          className="cursor-pointer hover:bg-gray-50"
+        <Button 
+          variant="outline"
+          className="h-auto p-6 flex flex-col items-start hover:bg-gray-50"
           onClick={() => navigate('/exams?action=create')}
         >
-          <CardHeader>
-            <CardTitle className="text-md">Create Exam</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-muted-foreground">Schedule and set up a new examination</p>
-          </CardContent>
-        </Card>
+          <h3 className="text-md font-semibold mb-2">Create Exam</h3>
+          <p className="text-muted-foreground text-left">Schedule and set up a new examination</p>
+        </Button>
         
-        <Card 
-          className="cursor-pointer hover:bg-gray-50"
+        <Button 
+          variant="outline"
+          className="h-auto p-6 flex flex-col items-start hover:bg-gray-50"
           onClick={() => navigate('/grading')}
         >
-          <CardHeader>
-            <CardTitle className="text-md">Grade Submissions</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-muted-foreground">Review and grade pending exam submissions</p>
-          </CardContent>
-        </Card>
+          <h3 className="text-md font-semibold mb-2">Grade Submissions</h3>
+          <p className="text-muted-foreground text-left">Review and grade pending exam submissions</p>
+        </Button>
       </div>
       
       <h2 className="text-xl font-semibold mt-8 mb-4">Upcoming Exams</h2>

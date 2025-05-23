@@ -15,6 +15,7 @@ import Exams from "./pages/Exams";
 import MyExams from "./pages/MyExams";
 import Results from "./pages/Results";
 import Grading from "./pages/Grading";
+import Profile from "./pages/Profile";
 
 const queryClient = new QueryClient();
 
@@ -76,6 +77,11 @@ const App = () => (
           <Route path="/" element={
             <ProtectedRoute>
               <Index />
+            </ProtectedRoute>
+          } />
+          <Route path="/profile" element={
+            <ProtectedRoute>
+              <Profile />
             </ProtectedRoute>
           } />
           <Route path="/questions" element={

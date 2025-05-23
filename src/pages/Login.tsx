@@ -16,6 +16,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { login } from '@/services/api';
 import { toast } from 'sonner';
+import { useQueryClient } from '@tanstack/react-query';
 
 const formSchema = z.object({
   email: z.string().email('Invalid email address'),
@@ -26,6 +27,9 @@ type FormValues = z.infer<typeof formSchema>;
 
 const Login = () => {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const [isSubmitting, setIsSubmitting] = React.useState(false);
+  
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -36,11 +40,23 @@ const Login = () => {
 
   const onSubmit = async (values: FormValues) => {
     try {
+      setIsSubmitting(true);
       await login(values.email, values.password);
+      
+      // Important: Invalidate the currentUser query to force a refetch
+      await queryClient.invalidateQueries({ queryKey: ['currentUser'] });
+      
       toast.success('Login successful');
-      navigate('/');
+      
+      // Use a small delay to ensure the query client has time to update
+      setTimeout(() => {
+        navigate('/', { replace: true });
+      }, 100);
     } catch (error) {
+      console.error('Login error:', error);
       toast.error('Login failed. Please check your credentials.');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -85,8 +101,8 @@ const Login = () => {
               )}
             />
 
-            <Button type="submit" className="w-full">
-              Sign In
+            <Button type="submit" className="w-full" disabled={isSubmitting}>
+              {isSubmitting ? 'Signing in...' : 'Sign In'}
             </Button>
           </form>
         </Form>
