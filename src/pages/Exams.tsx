@@ -9,11 +9,30 @@ import { Clock, Calendar, Users } from 'lucide-react';
 import { format } from 'date-fns';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { toast } from 'sonner';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle
+} from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 
 const Exams = () => {
   const [filter, setFilter] = useState<'all' | 'published' | 'unpublished'>('all');
   const navigate = useNavigate();
   const location = useLocation();
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [newExam, setNewExam] = useState({
+    title: '',
+    description: '',
+    duration: 60,
+    startTime: new Date().toISOString().slice(0, 16),
+    endTime: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().slice(0, 16),
+  });
   
   const { data: exams = [] } = useQuery({
     queryKey: ['exams'],
@@ -33,23 +52,45 @@ const Exams = () => {
   
   const isTeacherOrAdmin = currentUser?.role === 'teacher' || currentUser?.role === 'admin';
   
-  // Check if we need to show the exam creation dialog
   React.useEffect(() => {
     const params = new URLSearchParams(location.search);
     if (params.get('action') === 'create') {
-      handleCreateExam();
+      setIsDialogOpen(true);
     }
   }, [location]);
   
   const handleCreateExam = () => {
-    // For now, just show a toast to acknowledge the click
-    // In a real implementation, this would open a dialog or navigate to a form
-    toast.info('Create Exam functionality will be implemented soon');
+    setIsDialogOpen(true);
     
     // Clear the action from the URL
     if (location.search.includes('action=create')) {
       navigate('/exams');
     }
+  };
+
+  const handleExamSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    // In a real app, this would send the data to the backend
+    toast.success(`Exam "${newExam.title}" created successfully`);
+    setIsDialogOpen(false);
+    
+    // Reset form
+    setNewExam({
+      title: '',
+      description: '',
+      duration: 60,
+      startTime: new Date().toISOString().slice(0, 16),
+      endTime: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().slice(0, 16),
+    });
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setNewExam(prev => ({
+      ...prev,
+      [name]: value
+    }));
   };
   
   return (
@@ -132,6 +173,84 @@ const Exams = () => {
             </p>
           </div>
         )}
+
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <DialogContent className="sm:max-w-[600px]">
+            <DialogHeader>
+              <DialogTitle>Create New Exam</DialogTitle>
+              <DialogDescription>
+                Fill out the form below to create a new exam. You can add questions after creating the exam.
+              </DialogDescription>
+            </DialogHeader>
+            <form onSubmit={handleExamSubmit}>
+              <div className="grid gap-4 py-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="title">Exam Title</Label>
+                  <Input
+                    id="title"
+                    name="title"
+                    value={newExam.title}
+                    onChange={handleInputChange}
+                    placeholder="Mid-term Exam"
+                    required
+                  />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="description">Description</Label>
+                  <Textarea
+                    id="description"
+                    name="description"
+                    value={newExam.description}
+                    onChange={handleInputChange}
+                    placeholder="Describe the exam content and instructions"
+                  />
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="grid gap-2">
+                    <Label htmlFor="duration">Duration (minutes)</Label>
+                    <Input
+                      id="duration"
+                      name="duration"
+                      type="number"
+                      min="1"
+                      value={newExam.duration}
+                      onChange={handleInputChange}
+                      required
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="startTime">Start Time</Label>
+                    <Input
+                      id="startTime"
+                      name="startTime"
+                      type="datetime-local"
+                      value={newExam.startTime}
+                      onChange={handleInputChange}
+                      required
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="endTime">End Time</Label>
+                    <Input
+                      id="endTime"
+                      name="endTime"
+                      type="datetime-local"
+                      value={newExam.endTime}
+                      onChange={handleInputChange}
+                      required
+                    />
+                  </div>
+                </div>
+              </div>
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
+                  Cancel
+                </Button>
+                <Button type="submit">Create Exam</Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
       </main>
     </div>
   );
