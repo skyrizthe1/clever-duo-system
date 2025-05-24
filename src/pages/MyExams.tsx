@@ -70,9 +70,9 @@ const MyExams = () => {
     setResultsOpen(true);
   };
 
-  const handleExamSubmit = (answers) => {
-    console.log('Exam submitted:', answers);
-    // Here you would typically send the answers to the backend
+  const handleExamSubmit = (submissionData) => {
+    console.log('Exam submitted:', submissionData);
+    // Here you would typically send the submission to the backend
   };
   
   return (
@@ -108,9 +108,12 @@ const MyExams = () => {
                       </div>
                     </div>
                   </CardContent>
-                  <CardFooter>
-                    <Button className="w-full" onClick={() => handleStartExam(exam)}>
+                  <CardFooter className="flex gap-2">
+                    <Button className="flex-1" onClick={() => handleStartExam(exam)}>
                       Start Exam
+                    </Button>
+                    <Button variant="outline" onClick={() => handleViewDetails(exam)}>
+                      Details
                     </Button>
                   </CardFooter>
                 </Card>
@@ -203,6 +206,10 @@ const MyExams = () => {
           exam={selectedExam}
           open={detailsOpen}
           onOpenChange={setDetailsOpen}
+          onStartExam={() => {
+            setDetailsOpen(false);
+            setExamTakingOpen(true);
+          }}
         />
 
         <ExamResultsDialog

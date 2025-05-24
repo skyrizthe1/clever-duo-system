@@ -56,6 +56,17 @@ export interface Exam {
   published: boolean;
 }
 
+export interface ExamSubmission {
+  id: string;
+  examId: string;
+  studentId: string;
+  answers: Record<string, any>;
+  submittedAt: Date;
+  graded: boolean;
+  grade?: number;
+  feedback?: Record<string, string>;
+}
+
 // Mock backend data
 let tasks: Task[] = [
   {
@@ -206,6 +217,9 @@ let exams: Exam[] = [
   }
 ];
 
+// Track exam submissions with persistent state
+let examSubmissions: ExamSubmission[] = [];
+
 // Simulate API latency
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -312,7 +326,7 @@ export async function login(email: string, password: string): Promise<User> {
   
   // In a real app, we would validate the password here
   currentUser = user;
-  toast.success(`Welcome back, ${user.name}!`);
+  console.log('User logged in successfully:', user);
   return user;
 }
 
@@ -464,4 +478,65 @@ export async function deleteExam(id: string): Promise<void> {
   
   exams = [...exams.slice(0, examIndex), ...exams.slice(examIndex + 1)];
   toast.success("Exam deleted successfully");
+}
+
+// Exam submission functions
+export async function submitExam(submission: Omit<ExamSubmission, "id" | "graded">): Promise<ExamSubmission> {
+  await delay(500);
+  
+  if (!currentUser) {
+    throw new Error("Unauthorized access");
+  }
+  
+  const newSubmission: ExamSubmission = {
+    ...submission,
+    id: Math.random().toString(36).substr(2, 9),
+    graded: false,
+    submittedAt: new Date(submission.submittedAt)
+  };
+  
+  examSubmissions = [...examSubmissions, newSubmission];
+  toast.success("Exam submitted successfully");
+  return newSubmission;
+}
+
+export async function getExamSubmissions(): Promise<ExamSubmission[]> {
+  await delay(500);
+  
+  if (!currentUser || (currentUser.role !== 'admin' && currentUser.role !== 'teacher')) {
+    throw new Error("Unauthorized access");
+  }
+  
+  return [...examSubmissions];
+}
+
+export async function gradeSubmission(submissionId: string, grade: number, feedback: Record<string, string>): Promise<ExamSubmission> {
+  await delay(400);
+  
+  if (!currentUser || (currentUser.role !== 'admin' && currentUser.role !== 'teacher')) {
+    throw new Error("Unauthorized access");
+  }
+  
+  const submissionIndex = examSubmissions.findIndex(s => s.id === submissionId);
+  
+  if (submissionIndex === -1) {
+    toast.error("Submission not found");
+    throw new Error("Submission not found");
+  }
+  
+  const updatedSubmission = {
+    ...examSubmissions[submissionIndex],
+    graded: true,
+    grade,
+    feedback
+  };
+  
+  examSubmissions = [
+    ...examSubmissions.slice(0, submissionIndex),
+    updatedSubmission,
+    ...examSubmissions.slice(submissionIndex + 1)
+  ];
+  
+  toast.success("Submission graded successfully");
+  return updatedSubmission;
 }

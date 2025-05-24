@@ -39,19 +39,28 @@ const Login = () => {
   });
 
   const onSubmit = async (values: FormValues) => {
+    if (isSubmitting) return; // Prevent double submission
+    
     try {
       setIsSubmitting(true);
-      await login(values.email, values.password);
+      console.log('Attempting login with:', values.email);
       
-      // Important: Invalidate the currentUser query to force a refetch
-      await queryClient.invalidateQueries({ queryKey: ['currentUser'] });
+      const user = await login(values.email, values.password);
+      console.log('Login successful, user:', user);
+      
+      // Clear all cached queries and refetch user data
+      await queryClient.invalidateQueries();
+      
+      // Set the user data directly in cache
+      queryClient.setQueryData(['currentUser'], user);
       
       toast.success('Login successful');
       
-      // Use a small delay to ensure the query client has time to update
+      // Navigate after a short delay to ensure state is updated
       setTimeout(() => {
         navigate('/', { replace: true });
-      }, 100);
+      }, 500);
+      
     } catch (error) {
       console.error('Login error:', error);
       toast.error('Login failed. Please check your credentials.');

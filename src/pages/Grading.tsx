@@ -1,8 +1,8 @@
 
 import React, { useState } from 'react';
 import { Header } from '@/components/Header';
-import { useQuery } from '@tanstack/react-query';
-import { getExams, getCurrentUser } from '@/services/api';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { getExams, getCurrentUser, getExamSubmissions, gradeSubmission } from '@/services/api';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -19,7 +19,8 @@ import {
   DialogContent, 
   DialogHeader, 
   DialogTitle, 
-  DialogFooter 
+  DialogFooter,
+  DialogDescription
 } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
@@ -32,6 +33,8 @@ const Grading = () => {
   const [points, setPoints] = useState<Record<string, string>>({});
   const [feedback, setFeedback] = useState<Record<string, string>>({});
   
+  const queryClient = useQueryClient();
+  
   const { data: exams = [] } = useQuery({
     queryKey: ['exams'],
     queryFn: getExams
@@ -42,13 +45,28 @@ const Grading = () => {
     queryFn: getCurrentUser
   });
   
+  const { data: submissions = [] } = useQuery({
+    queryKey: ['examSubmissions'],
+    queryFn: getExamSubmissions
+  });
+  
+  const gradeMutation = useMutation({
+    mutationFn: ({ submissionId, grade, feedbackData }: { submissionId: string, grade: number, feedbackData: Record<string, string> }) =>
+      gradeSubmission(submissionId, grade, feedbackData),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['examSubmissions'] });
+      setGradingOpen(false);
+      toast.success('Grades saved successfully');
+    }
+  });
+  
   // Filter to get exams that need grading (completed exams)
   const now = new Date();
   const completedExams = exams.filter(exam => 
     exam.published && new Date(exam.endTime) < now
   );
   
-  // Mock student submissions data
+  // Mock students for demonstration
   const mockStudents = [
     { id: 's1', name: 'Alex Johnson' },
     { id: 's2', name: 'Jamie Smith' },
@@ -57,20 +75,25 @@ const Grading = () => {
     { id: 's5', name: 'Jordan Lee' },
   ];
   
+  // Create mock submissions with proper tracking
   const mockSubmissions = completedExams.flatMap(exam => 
-    mockStudents.map(student => ({
-      id: `${exam.id}-${student.id}`,
-      examId: exam.id,
-      examTitle: exam.title,
-      studentId: student.id,
-      studentName: student.name,
-      submittedAt: new Date(exam.endTime),
-      status: Math.random() > 0.5 ? 'graded' : 'pending',
-      answers: exam.questions.map(qId => ({
-        questionId: qId,
-        answer: Math.random() > 0.7 ? 'A' : Math.random() > 0.5 ? 'B' : Math.random() > 0.3 ? 'C' : 'D',
-      }))
-    }))
+    mockStudents.map(student => {
+      const existingSubmission = submissions.find(s => s.examId === exam.id && s.studentId === student.id);
+      
+      return existingSubmission || {
+        id: `${exam.id}-${student.id}`,
+        examId: exam.id,
+        examTitle: exam.title,
+        studentId: student.id,
+        studentName: student.name,
+        submittedAt: new Date(exam.endTime),
+        graded: false,
+        answers: exam.questions.reduce((acc, qId) => ({
+          ...acc,
+          [qId]: Math.random() > 0.7 ? 'A' : Math.random() > 0.5 ? 'B' : Math.random() > 0.3 ? 'C' : 'D'
+        }), {})
+      };
+    })
   );
   
   const handleOpenGrading = (submission: any) => {
@@ -83,10 +106,10 @@ const Grading = () => {
     const exam = exams.find(e => e.id === submission.examId);
     if (exam) {
       exam.questions.forEach(questionId => {
-        initialPoints[questionId] = submission.status === 'graded' ? 
+        initialPoints[questionId] = submission.graded && submission.feedback ? 
           String(Math.floor(Math.random() * 10)) : '';
-        initialFeedback[questionId] = submission.status === 'graded' ? 
-          'Good work on this question.' : '';
+        initialFeedback[questionId] = submission.graded && submission.feedback ? 
+          submission.feedback[questionId] || 'Good work on this question.' : '';
       });
     }
     
@@ -96,14 +119,15 @@ const Grading = () => {
   };
   
   const handleSaveGrading = () => {
-    // In a real app, we would save the grades to the backend
-    toast.success('Grades saved successfully');
-    setGradingOpen(false);
+    if (!selectedSubmission) return;
     
-    // Update the mock submission status
-    if (selectedSubmission) {
-      selectedSubmission.status = 'graded';
-    }
+    const totalPoints = Object.values(points).reduce((sum, p) => sum + (parseInt(p) || 0), 0);
+    
+    gradeMutation.mutate({
+      submissionId: selectedSubmission.id,
+      grade: totalPoints,
+      feedbackData: feedback
+    });
   };
   
   const filteredSubmissions = selectedExam 
@@ -159,11 +183,11 @@ const Grading = () => {
                       <TableCell>{sub.submittedAt.toLocaleDateString()}</TableCell>
                       <TableCell>
                         <Badge variant="outline" className={
-                          sub.status === 'graded' 
+                          sub.graded 
                             ? 'bg-green-100 text-green-800' 
                             : 'bg-yellow-100 text-yellow-800'
                         }>
-                          {sub.status === 'graded' ? 'Graded' : 'Pending'}
+                          {sub.graded ? 'Graded' : 'Pending'}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-right">
@@ -172,7 +196,7 @@ const Grading = () => {
                           size="sm" 
                           onClick={() => handleOpenGrading(sub)}
                         >
-                          {sub.status === 'graded' ? 'Review Grades' : 'Grade'}
+                          {sub.graded ? 'Review Grades' : 'Grade'}
                         </Button>
                       </TableCell>
                     </TableRow>
@@ -196,11 +220,14 @@ const Grading = () => {
               <DialogTitle>
                 {selectedSubmission?.examTitle} - {selectedSubmission?.studentName}
               </DialogTitle>
+              <DialogDescription>
+                Grade this student's exam submission
+              </DialogDescription>
             </DialogHeader>
             
             <div className="space-y-4 max-h-[60vh] overflow-y-auto py-2">
               {selectedSubmission && exams.find(e => e.id === selectedSubmission.examId)?.questions.map((questionId, index) => {
-                const studentAnswer = selectedSubmission.answers.find((a: any) => a.questionId === questionId)?.answer || 'No answer';
+                const studentAnswer = selectedSubmission.answers[questionId] || 'No answer';
                 
                 return (
                   <Card key={questionId}>
@@ -248,7 +275,9 @@ const Grading = () => {
             
             <DialogFooter>
               <Button variant="outline" onClick={() => setGradingOpen(false)}>Cancel</Button>
-              <Button onClick={handleSaveGrading}>Save Grades</Button>
+              <Button onClick={handleSaveGrading} disabled={gradeMutation.isPending}>
+                {gradeMutation.isPending ? 'Saving...' : 'Save Grades'}
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>

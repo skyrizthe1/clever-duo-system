@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Calendar, Clock, BookOpen, User } from 'lucide-react';
@@ -10,9 +10,10 @@ interface ExamDetailsDialogProps {
   exam: Exam | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onStartExam?: () => void;
 }
 
-export function ExamDetailsDialog({ exam, open, onOpenChange }: ExamDetailsDialogProps) {
+export function ExamDetailsDialog({ exam, open, onOpenChange, onStartExam }: ExamDetailsDialogProps) {
   if (!exam) return null;
 
   const now = new Date();
@@ -25,6 +26,9 @@ export function ExamDetailsDialog({ exam, open, onOpenChange }: ExamDetailsDialo
       <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle className="text-2xl">{exam.title}</DialogTitle>
+          <DialogDescription>
+            {exam.description}
+          </DialogDescription>
         </DialogHeader>
         
         <div className="space-y-6">
@@ -33,8 +37,6 @@ export function ExamDetailsDialog({ exam, open, onOpenChange }: ExamDetailsDialo
             {isUpcoming && <Badge className="bg-blue-100 text-blue-800">Upcoming</Badge>}
             {isCompleted && <Badge className="bg-gray-100 text-gray-800">Completed</Badge>}
           </div>
-
-          <p className="text-gray-600 text-lg">{exam.description}</p>
 
           <div className="grid grid-cols-2 gap-4">
             <div className="flex items-center gap-3 p-4 bg-blue-50 rounded-lg">
@@ -86,8 +88,14 @@ export function ExamDetailsDialog({ exam, open, onOpenChange }: ExamDetailsDialo
             <Button variant="outline" onClick={() => onOpenChange(false)}>
               Close
             </Button>
-            {isOngoing && (
-              <Button className="bg-green-600 hover:bg-green-700">
+            {isOngoing && onStartExam && (
+              <Button 
+                className="bg-green-600 hover:bg-green-700"
+                onClick={() => {
+                  onStartExam();
+                  onOpenChange(false);
+                }}
+              >
                 Start Exam
               </Button>
             )}

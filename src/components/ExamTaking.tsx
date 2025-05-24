@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -26,9 +26,10 @@ export function ExamTaking({ exam, questions, open, onOpenChange, onSubmit }: Ex
   const [answers, setAnswers] = useState<Record<string, any>>({});
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [timeLeft, setTimeLeft] = useState(0);
+  const [examStarted, setExamStarted] = useState(false);
   
   const { violations, isTabActive } = useAntiCheating({
-    isExamActive: open,
+    isExamActive: open && examStarted,
     onViolation: () => {
       console.log('Anti-cheating violation detected');
     }
@@ -36,18 +37,21 @@ export function ExamTaking({ exam, questions, open, onOpenChange, onSubmit }: Ex
 
   useEffect(() => {
     if (exam && open) {
-      setTimeLeft(exam.duration * 60); // Convert minutes to seconds
+      setTimeLeft(exam.duration * 60);
+      setExamStarted(false);
+      setAnswers({});
+      setCurrentQuestion(0);
     }
   }, [exam, open]);
 
   useEffect(() => {
-    if (timeLeft > 0 && open) {
+    if (timeLeft > 0 && open && examStarted) {
       const timer = setTimeout(() => setTimeLeft(timeLeft - 1), 1000);
       return () => clearTimeout(timer);
-    } else if (timeLeft === 0 && open) {
+    } else if (timeLeft === 0 && open && examStarted) {
       handleSubmit();
     }
-  }, [timeLeft, open]);
+  }, [timeLeft, open, examStarted]);
 
   if (!exam) return null;
 
@@ -58,9 +62,25 @@ export function ExamTaking({ exam, questions, open, onOpenChange, onSubmit }: Ex
     setAnswers(prev => ({ ...prev, [questionId]: answer }));
   };
 
+  const handleStartExam = () => {
+    setExamStarted(true);
+    toast.info('Exam started! Good luck!');
+  };
+
   const handleSubmit = () => {
-    onSubmit(answers);
+    if (!examStarted) {
+      toast.error('Please start the exam first!');
+      return;
+    }
+    
+    onSubmit({
+      examId: exam.id,
+      answers: answers,
+      submittedAt: new Date().toISOString(),
+      timeSpent: exam.duration * 60 - timeLeft
+    });
     onOpenChange(false);
+    setExamStarted(false);
     toast.success('Exam submitted successfully!');
   };
 
@@ -95,109 +115,126 @@ export function ExamTaking({ exam, questions, open, onOpenChange, onSubmit }: Ex
               </Badge>
             </div>
           </DialogTitle>
+          <DialogDescription>
+            {examStarted ? 'Answer all questions before time runs out' : 'Click Start Exam to begin'}
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6">
-          <div>
-            <div className="flex justify-between text-sm text-muted-foreground mb-2">
-              <span>Question {currentQuestion + 1} of {examQuestions.length}</span>
-              <span>{Math.round(progress)}% complete</span>
-            </div>
-            <Progress value={progress} className="h-2" />
-          </div>
-
-          {!isTabActive && (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
-              <div className="flex items-center gap-2 text-red-800">
-                <AlertTriangle className="h-5 w-5" />
-                <span className="font-semibold">Warning: Please return to the exam</span>
-              </div>
-              <p className="text-red-700 text-sm mt-1">
-                You have switched tabs or minimized the window. This behavior is being monitored.
+          {!examStarted ? (
+            <div className="text-center py-8">
+              <h3 className="text-lg font-semibold mb-4">Ready to start your exam?</h3>
+              <p className="text-muted-foreground mb-6">
+                You have {exam.duration} minutes to complete {examQuestions.length} questions.
               </p>
+              <Button onClick={handleStartExam} size="lg" className="bg-green-600 hover:bg-green-700">
+                Start Exam
+              </Button>
             </div>
-          )}
+          ) : (
+            <>
+              <div>
+                <div className="flex justify-between text-sm text-muted-foreground mb-2">
+                  <span>Question {currentQuestion + 1} of {examQuestions.length}</span>
+                  <span>{Math.round(progress)}% complete</span>
+                </div>
+                <Progress value={progress} className="h-2" />
+              </div>
 
-          {currentQ && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">
-                  {currentQ.content}
-                  <Badge className="ml-2" variant="outline">{currentQ.points} points</Badge>
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {currentQ.type === 'single-choice' && currentQ.options && (
-                  <RadioGroup
-                    value={answers[currentQ.id] || ''}
-                    onValueChange={(value) => handleAnswerChange(currentQ.id, value)}
-                  >
-                    {currentQ.options.map((option, index) => (
-                      <div key={index} className="flex items-center space-x-2">
-                        <RadioGroupItem value={option} id={`option-${index}`} />
-                        <Label htmlFor={`option-${index}`}>{option}</Label>
-                      </div>
-                    ))}
-                  </RadioGroup>
-                )}
-
-                {currentQ.type === 'multiple-choice' && currentQ.options && (
-                  <div className="space-y-2">
-                    {currentQ.options.map((option, index) => (
-                      <div key={index} className="flex items-center space-x-2">
-                        <Checkbox
-                          id={`option-${index}`}
-                          checked={(answers[currentQ.id] || []).includes(option)}
-                          onCheckedChange={(checked) => {
-                            const currentAnswers = answers[currentQ.id] || [];
-                            if (checked) {
-                              handleAnswerChange(currentQ.id, [...currentAnswers, option]);
-                            } else {
-                              handleAnswerChange(currentQ.id, currentAnswers.filter((a: string) => a !== option));
-                            }
-                          }}
-                        />
-                        <Label htmlFor={`option-${index}`}>{option}</Label>
-                      </div>
-                    ))}
+              {!isTabActive && (
+                <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+                  <div className="flex items-center gap-2 text-red-800">
+                    <AlertTriangle className="h-5 w-5" />
+                    <span className="font-semibold">Warning: Please return to the exam</span>
                   </div>
-                )}
-
-                {(currentQ.type === 'short-answer' || currentQ.type === 'fill-blank') && (
-                  <Textarea
-                    placeholder="Enter your answer..."
-                    value={answers[currentQ.id] || ''}
-                    onChange={(e) => handleAnswerChange(currentQ.id, e.target.value)}
-                    className="min-h-[100px]"
-                  />
-                )}
-              </CardContent>
-            </Card>
-          )}
-
-          <div className="flex justify-between">
-            <Button
-              variant="outline"
-              onClick={() => setCurrentQuestion(Math.max(0, currentQuestion - 1))}
-              disabled={currentQuestion === 0}
-            >
-              Previous
-            </Button>
-
-            <div className="flex gap-2">
-              {currentQuestion < examQuestions.length - 1 ? (
-                <Button
-                  onClick={() => setCurrentQuestion(currentQuestion + 1)}
-                >
-                  Next
-                </Button>
-              ) : (
-                <Button onClick={handleSubmit} className="bg-green-600 hover:bg-green-700">
-                  Submit Exam
-                </Button>
+                  <p className="text-red-700 text-sm mt-1">
+                    You have switched tabs or minimized the window. This behavior is being monitored.
+                  </p>
+                </div>
               )}
-            </div>
-          </div>
+
+              {currentQ && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">
+                      {currentQ.content}
+                      <Badge className="ml-2" variant="outline">{currentQ.points} points</Badge>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {currentQ.type === 'single-choice' && currentQ.options && (
+                      <RadioGroup
+                        value={answers[currentQ.id] || ''}
+                        onValueChange={(value) => handleAnswerChange(currentQ.id, value)}
+                      >
+                        {currentQ.options.map((option, index) => (
+                          <div key={index} className="flex items-center space-x-2">
+                            <RadioGroupItem value={option} id={`option-${index}`} />
+                            <Label htmlFor={`option-${index}`}>{option}</Label>
+                          </div>
+                        ))}
+                      </RadioGroup>
+                    )}
+
+                    {currentQ.type === 'multiple-choice' && currentQ.options && (
+                      <div className="space-y-2">
+                        {currentQ.options.map((option, index) => (
+                          <div key={index} className="flex items-center space-x-2">
+                            <Checkbox
+                              id={`option-${index}`}
+                              checked={(answers[currentQ.id] || []).includes(option)}
+                              onCheckedChange={(checked) => {
+                                const currentAnswers = answers[currentQ.id] || [];
+                                if (checked) {
+                                  handleAnswerChange(currentQ.id, [...currentAnswers, option]);
+                                } else {
+                                  handleAnswerChange(currentQ.id, currentAnswers.filter((a: string) => a !== option));
+                                }
+                              }}
+                            />
+                            <Label htmlFor={`option-${index}`}>{option}</Label>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {(currentQ.type === 'short-answer' || currentQ.type === 'fill-blank') && (
+                      <Textarea
+                        placeholder="Enter your answer..."
+                        value={answers[currentQ.id] || ''}
+                        onChange={(e) => handleAnswerChange(currentQ.id, e.target.value)}
+                        className="min-h-[100px]"
+                      />
+                    )}
+                  </CardContent>
+                </Card>
+              )}
+
+              <div className="flex justify-between">
+                <Button
+                  variant="outline"
+                  onClick={() => setCurrentQuestion(Math.max(0, currentQuestion - 1))}
+                  disabled={currentQuestion === 0}
+                >
+                  Previous
+                </Button>
+
+                <div className="flex gap-2">
+                  {currentQuestion < examQuestions.length - 1 ? (
+                    <Button
+                      onClick={() => setCurrentQuestion(currentQuestion + 1)}
+                    >
+                      Next
+                    </Button>
+                  ) : (
+                    <Button onClick={handleSubmit} className="bg-green-600 hover:bg-green-700">
+                      Submit Exam
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </>
+          )}
         </div>
       </DialogContent>
     </Dialog>
