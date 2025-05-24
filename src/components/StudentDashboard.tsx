@@ -1,16 +1,29 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { getExams } from '@/services/api';
+import { getExams, getQuestions } from '@/services/api';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Calendar, Clock, BookOpen, Award, TrendingUp } from 'lucide-react';
+import { ExamDetailsDialog } from '@/components/ExamDetailsDialog';
+import { ExamResultsDialog } from '@/components/ExamResultsDialog';
+import { ExamTaking } from '@/components/ExamTaking';
 
 export function StudentDashboard() {
+  const [selectedExam, setSelectedExam] = useState(null);
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [resultsOpen, setResultsOpen] = useState(false);
+  const [examTakingOpen, setExamTakingOpen] = useState(false);
+
   const { data: exams = [] } = useQuery({
     queryKey: ['exams'],
     queryFn: getExams
+  });
+
+  const { data: questions = [] } = useQuery({
+    queryKey: ['questions'],
+    queryFn: getQuestions
   });
   
   const publishedExams = exams.filter(exam => exam.published);
@@ -31,6 +44,26 @@ export function StudentDashboard() {
   const pastExams = sortedExams.filter(
     exam => new Date(exam.endTime) < now
   );
+
+  const handleStartExam = (exam) => {
+    setSelectedExam(exam);
+    setExamTakingOpen(true);
+  };
+
+  const handleViewDetails = (exam) => {
+    setSelectedExam(exam);
+    setDetailsOpen(true);
+  };
+
+  const handleViewResults = (exam) => {
+    setSelectedExam(exam);
+    setResultsOpen(true);
+  };
+
+  const handleExamSubmit = (answers) => {
+    console.log('Exam submitted:', answers);
+    // Here you would typically send the answers to the backend
+  };
 
   return (
     <div className="space-y-6">
@@ -105,7 +138,10 @@ export function StudentDashboard() {
                   </div>
                 </CardContent>
                 <CardFooter>
-                  <Button className="w-full bg-gradient-to-r from-green-500 to-blue-500 hover:from-green-600 hover:to-blue-600 text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-300">
+                  <Button 
+                    className="w-full bg-gradient-to-r from-green-500 to-blue-500 hover:from-green-600 hover:to-blue-600 text-white font-semibold shadow-lg hover:shadow-xl transition-all duration-300"
+                    onClick={() => handleStartExam(exam)}
+                  >
                     Start Exam Now
                   </Button>
                 </CardFooter>
@@ -149,7 +185,11 @@ export function StudentDashboard() {
                   </div>
                 </CardContent>
                 <CardFooter>
-                  <Button variant="outline" className="w-full hover:bg-blue-50 border-blue-200 text-blue-700 hover:text-blue-800">
+                  <Button 
+                    variant="outline" 
+                    className="w-full hover:bg-blue-50 border-blue-200 text-blue-700 hover:text-blue-800"
+                    onClick={() => handleViewDetails(exam)}
+                  >
                     View Details
                   </Button>
                 </CardFooter>
@@ -186,13 +226,17 @@ export function StudentDashboard() {
                       <TrendingUp className="h-4 w-4 text-gray-500" />
                       <div>
                         <p className="text-xs text-gray-500 font-medium">Score</p>
-                        <p className="text-gray-600">Pending</p>
+                        <p className="text-gray-600">85/100</p>
                       </div>
                     </div>
                   </div>
                 </CardContent>
                 <CardFooter>
-                  <Button variant="outline" className="w-full hover:bg-purple-50 border-purple-200 text-purple-700 hover:text-purple-800">
+                  <Button 
+                    variant="outline" 
+                    className="w-full hover:bg-purple-50 border-purple-200 text-purple-700 hover:text-purple-800"
+                    onClick={() => handleViewResults(exam)}
+                  >
                     View Results
                   </Button>
                 </CardFooter>
@@ -211,6 +255,26 @@ export function StudentDashboard() {
           </p>
         </div>
       )}
+
+      <ExamDetailsDialog
+        exam={selectedExam}
+        open={detailsOpen}
+        onOpenChange={setDetailsOpen}
+      />
+
+      <ExamResultsDialog
+        exam={selectedExam}
+        open={resultsOpen}
+        onOpenChange={setResultsOpen}
+      />
+
+      <ExamTaking
+        exam={selectedExam}
+        questions={questions}
+        open={examTakingOpen}
+        onOpenChange={setExamTakingOpen}
+        onSubmit={handleExamSubmit}
+      />
     </div>
   );
 }

@@ -1,18 +1,30 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Header } from '@/components/Header';
 import { useQuery } from '@tanstack/react-query';
-import { getExams, getCurrentUser } from '@/services/api';
+import { getExams, getQuestions, getCurrentUser } from '@/services/api';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Clock, Calendar } from 'lucide-react';
-import { format } from 'date-fns';
+import { ExamDetailsDialog } from '@/components/ExamDetailsDialog';
+import { ExamResultsDialog } from '@/components/ExamResultsDialog';
+import { ExamTaking } from '@/components/ExamTaking';
 
 const MyExams = () => {
+  const [selectedExam, setSelectedExam] = useState(null);
+  const [detailsOpen, setDetailsOpen] = useState(false);
+  const [resultsOpen, setResultsOpen] = useState(false);
+  const [examTakingOpen, setExamTakingOpen] = useState(false);
+
   const { data: exams = [] } = useQuery({
     queryKey: ['exams'],
     queryFn: getExams
+  });
+
+  const { data: questions = [] } = useQuery({
+    queryKey: ['questions'],
+    queryFn: getQuestions
   });
   
   const { data: currentUser } = useQuery({
@@ -42,6 +54,26 @@ const MyExams = () => {
   const pastExams = sortedExams.filter(
     exam => new Date(exam.endTime) < now
   );
+
+  const handleStartExam = (exam) => {
+    setSelectedExam(exam);
+    setExamTakingOpen(true);
+  };
+
+  const handleViewDetails = (exam) => {
+    setSelectedExam(exam);
+    setDetailsOpen(true);
+  };
+
+  const handleViewResults = (exam) => {
+    setSelectedExam(exam);
+    setResultsOpen(true);
+  };
+
+  const handleExamSubmit = (answers) => {
+    console.log('Exam submitted:', answers);
+    // Here you would typically send the answers to the backend
+  };
   
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -77,7 +109,9 @@ const MyExams = () => {
                     </div>
                   </CardContent>
                   <CardFooter>
-                    <Button className="w-full">Start Exam</Button>
+                    <Button className="w-full" onClick={() => handleStartExam(exam)}>
+                      Start Exam
+                    </Button>
                   </CardFooter>
                 </Card>
               ))}
@@ -111,7 +145,9 @@ const MyExams = () => {
                     </div>
                   </CardContent>
                   <CardFooter>
-                    <Button variant="outline" className="w-full">View Details</Button>
+                    <Button variant="outline" className="w-full" onClick={() => handleViewDetails(exam)}>
+                      View Details
+                    </Button>
                   </CardFooter>
                 </Card>
               ))}
@@ -139,12 +175,14 @@ const MyExams = () => {
                       </div>
                       <div>
                         <p className="text-xs text-muted-foreground">Score</p>
-                        <p>Not graded</p>
+                        <p>85/100</p>
                       </div>
                     </div>
                   </CardContent>
                   <CardFooter>
-                    <Button variant="outline" className="w-full">View Results</Button>
+                    <Button variant="outline" className="w-full" onClick={() => handleViewResults(exam)}>
+                      View Results
+                    </Button>
                   </CardFooter>
                 </Card>
               ))}
@@ -160,6 +198,26 @@ const MyExams = () => {
             </p>
           </div>
         )}
+
+        <ExamDetailsDialog
+          exam={selectedExam}
+          open={detailsOpen}
+          onOpenChange={setDetailsOpen}
+        />
+
+        <ExamResultsDialog
+          exam={selectedExam}
+          open={resultsOpen}
+          onOpenChange={setResultsOpen}
+        />
+
+        <ExamTaking
+          exam={selectedExam}
+          questions={questions}
+          open={examTakingOpen}
+          onOpenChange={setExamTakingOpen}
+          onSubmit={handleExamSubmit}
+        />
       </main>
     </div>
   );

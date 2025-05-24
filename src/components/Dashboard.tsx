@@ -4,16 +4,13 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Task, TaskStatus, createTask, getTasks, updateTask } from '@/services/api';
 import { TaskCard } from '@/components/TaskCard';
-import { TaskForm } from '@/components/TaskForm';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { PlusCircle, Filter, Search } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 export function Dashboard() {
-  const [isFormOpen, setIsFormOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState<string | null>(null);
-  const [editingTask, setEditingTask] = useState<Task | null>(null);
   const queryClient = useQueryClient();
 
   // Fetch tasks
@@ -28,22 +25,19 @@ export function Dashboard() {
       ...data,
       assignedTo: undefined,
     });
-    setIsFormOpen(false);
     queryClient.invalidateQueries({ queryKey: ['tasks'] });
   };
 
   // Handle updating a task
-  const handleUpdateTask = async (data: any) => {
-    if (editingTask) {
-      await updateTask(editingTask.id, data);
-      setEditingTask(null);
-      queryClient.invalidateQueries({ queryKey: ['tasks'] });
-    }
+  const handleUpdateTask = async (taskId: string, data: any) => {
+    await updateTask(taskId, data);
+    queryClient.invalidateQueries({ queryKey: ['tasks'] });
   };
 
   // Open edit form
   const handleEditTask = (task: Task) => {
-    setEditingTask(task);
+    // Handle task editing logic here
+    console.log('Edit task:', task);
   };
 
   // Filter tasks
@@ -102,7 +96,7 @@ export function Dashboard() {
             </TabsList>
           </Tabs>
         </div>
-        <Button onClick={() => setIsFormOpen(true)}>
+        <Button onClick={() => console.log('Create new task')}>
           <PlusCircle className="mr-1 h-4 w-4" />
           New Task
         </Button>
@@ -200,23 +194,6 @@ export function Dashboard() {
             </div>
           </div>
         </div>
-      )}
-
-      {/* Task forms */}
-      <TaskForm
-        open={isFormOpen}
-        onOpenChange={setIsFormOpen}
-        onSubmit={handleCreateTask}
-      />
-      
-      {editingTask && (
-        <TaskForm
-          open={!!editingTask}
-          onOpenChange={(open) => !open && setEditingTask(null)}
-          onSubmit={handleUpdateTask}
-          defaultValues={editingTask}
-          isEditing
-        />
       )}
     </div>
   );
