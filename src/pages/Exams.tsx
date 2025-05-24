@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { Header } from '@/components/Header';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getExams, getCurrentUser, createExam } from '@/services/api';
+import { getExams, getCurrentUser, createExam, updateExam } from '@/services/api';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Clock, Calendar, Users } from 'lucide-react';
@@ -59,6 +59,13 @@ const Exams = () => {
       });
     }
   });
+
+  const updateExamMutation = useMutation({
+    mutationFn: ({ id, updates }: { id: string; updates: any }) => updateExam(id, updates),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['exams'] });
+    }
+  });
   
   const filteredExams = React.useMemo(() => {
     if (filter === 'all') return exams;
@@ -109,6 +116,13 @@ const Exams = () => {
       ...prev,
       [name]: name === 'duration' ? parseInt(value) : value
     }));
+  };
+
+  const handleTogglePublish = (examId: string, currentPublished: boolean) => {
+    updateExamMutation.mutate({
+      id: examId,
+      updates: { published: !currentPublished }
+    });
   };
   
   return (
@@ -181,8 +195,21 @@ const Exams = () => {
                   <Button variant="outline" className="hover:bg-blue-50 transition-colors">View Details</Button>
                   {isTeacherOrAdmin && (
                     exam.published 
-                      ? <Button variant="secondary" className="hover:bg-gray-200 transition-colors">Unpublish</Button>
-                      : <Button className="bg-gradient-to-r from-green-500 to-blue-500 hover:from-green-600 hover:to-blue-600 text-white">Publish</Button>
+                      ? <Button 
+                          variant="secondary" 
+                          className="hover:bg-gray-200 transition-colors"
+                          onClick={() => handleTogglePublish(exam.id, exam.published)}
+                          disabled={updateExamMutation.isPending}
+                        >
+                          {updateExamMutation.isPending ? 'Updating...' : 'Unpublish'}
+                        </Button>
+                      : <Button 
+                          className="bg-gradient-to-r from-green-500 to-blue-500 hover:from-green-600 hover:to-blue-600 text-white"
+                          onClick={() => handleTogglePublish(exam.id, exam.published)}
+                          disabled={updateExamMutation.isPending}
+                        >
+                          {updateExamMutation.isPending ? 'Publishing...' : 'Publish'}
+                        </Button>
                   )}
                 </CardFooter>
               </Card>

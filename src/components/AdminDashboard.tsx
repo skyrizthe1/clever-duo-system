@@ -1,14 +1,17 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { getUsers, getExams, getQuestions } from '@/services/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { UserIcon, FileText, Check, Settings, Database, Shield } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { toast } from 'sonner';
+import { UserManagementDialog } from './UserManagementDialog';
+import { ExamSettingsDialog } from './ExamSettingsDialog';
 
 export function AdminDashboard() {
   const navigate = useNavigate();
+  const [userManagementOpen, setUserManagementOpen] = useState(false);
+  const [examSettingsOpen, setExamSettingsOpen] = useState(false);
   
   const { data: users = [] } = useQuery({
     queryKey: ['users'],
@@ -26,7 +29,7 @@ export function AdminDashboard() {
   });
 
   const handleManageUsers = () => {
-    toast.info("User management feature coming soon!");
+    setUserManagementOpen(true);
   };
 
   const handleQuestionBank = () => {
@@ -34,7 +37,7 @@ export function AdminDashboard() {
   };
 
   const handleExamSettings = () => {
-    toast.info("Exam settings feature coming soon!");
+    setExamSettingsOpen(true);
   };
 
   return (
@@ -133,6 +136,16 @@ export function AdminDashboard() {
           </CardContent>
         </Card>
       </div>
+
+      <UserManagementDialog 
+        open={userManagementOpen} 
+        onOpenChange={setUserManagementOpen} 
+      />
+      
+      <ExamSettingsDialog 
+        open={examSettingsOpen} 
+        onOpenChange={setExamSettingsOpen} 
+      />
     </div>
   );
 }
