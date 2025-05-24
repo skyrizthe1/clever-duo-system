@@ -1,4 +1,3 @@
-
 // Mock API service that simulates backend functionality
 import { toast } from "sonner";
 
@@ -120,8 +119,92 @@ let users: User[] = [
   }
 ];
 
-let questions: Question[] = [];
-let exams: Exam[] = [];
+let questions: Question[] = [
+  {
+    id: "q1",
+    type: "single-choice",
+    content: "What is the capital of France?",
+    options: ["London", "Berlin", "Paris", "Madrid"],
+    correctAnswer: "Paris",
+    points: 5,
+    category: "Geography",
+    createdBy: "2"
+  },
+  {
+    id: "q2",
+    type: "multiple-choice", 
+    content: "Which of the following are programming languages?",
+    options: ["JavaScript", "HTML", "Python", "CSS"],
+    correctAnswer: ["JavaScript", "Python"],
+    points: 10,
+    category: "Computer Science",
+    createdBy: "2"
+  },
+  {
+    id: "q3",
+    type: "short-answer",
+    content: "Explain the concept of photosynthesis in plants.",
+    correctAnswer: "Process by which plants convert sunlight into energy",
+    points: 15,
+    category: "Biology",
+    createdBy: "2"
+  },
+  {
+    id: "q4",
+    type: "single-choice",
+    content: "What is 2 + 2?",
+    options: ["3", "4", "5", "6"],
+    correctAnswer: "4",
+    points: 5,
+    category: "Mathematics",
+    createdBy: "2"
+  },
+  {
+    id: "q5",
+    type: "fill-blank",
+    content: "The largest planet in our solar system is ____.",
+    correctAnswer: "Jupiter",
+    points: 8,
+    category: "Astronomy",
+    createdBy: "2"
+  }
+];
+
+let exams: Exam[] = [
+  {
+    id: "e1",
+    title: "General Knowledge Quiz",
+    description: "A comprehensive quiz covering various topics including geography, science, and mathematics.",
+    duration: 60,
+    startTime: new Date(Date.now() - 30 * 60 * 1000), // Started 30 minutes ago
+    endTime: new Date(Date.now() + 30 * 60 * 1000), // Ends in 30 minutes
+    questions: ["q1", "q2", "q4"],
+    createdBy: "2",
+    published: true
+  },
+  {
+    id: "e2", 
+    title: "Science Fundamentals",
+    description: "Test your knowledge of basic scientific concepts in biology and astronomy.",
+    duration: 45,
+    startTime: new Date(Date.now() + 2 * 60 * 60 * 1000), // Starts in 2 hours
+    endTime: new Date(Date.now() + 3 * 60 * 60 * 1000), // Ends in 3 hours
+    questions: ["q3", "q5"],
+    createdBy: "2",
+    published: true
+  },
+  {
+    id: "e3",
+    title: "Programming Basics",
+    description: "An assessment of fundamental programming concepts and languages.",
+    duration: 90,
+    startTime: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000), // Started 2 days ago
+    endTime: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000 + 90 * 60 * 1000), // Ended 2 days ago
+    questions: ["q2"],
+    createdBy: "2", 
+    published: true
+  }
+];
 
 // Simulate API latency
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
