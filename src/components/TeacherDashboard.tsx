@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import { getExams, getQuestions } from '@/services/api';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { FileText, Clock } from 'lucide-react';
+import { FileText, Clock, Plus, BookOpen, Users } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 export function TeacherDashboard() {
@@ -22,20 +22,21 @@ export function TeacherDashboard() {
 
   return (
     <div className="space-y-6">
-      <div className="grid gap-4 md:grid-cols-2">
-        <Card>
+      <div className="grid gap-6 md:grid-cols-2">
+        <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-0 shadow-lg hover:shadow-xl transition-all duration-300">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">My Questions</CardTitle>
-            <FileText className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium text-blue-700">My Questions</CardTitle>
+            <FileText className="h-5 w-5 text-blue-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{questions.length}</div>
+            <div className="text-3xl font-bold text-blue-800">{questions.length}</div>
+            <p className="text-xs text-blue-600 mt-1">Question Bank</p>
           </CardContent>
           <CardFooter>
             <Button 
               variant="outline" 
               size="sm" 
-              className="w-full"
+              className="w-full hover:bg-blue-50 border-blue-200 text-blue-700 hover:text-blue-800"
               onClick={() => navigate('/questions')}
             >
               Manage Questions
@@ -43,14 +44,14 @@ export function TeacherDashboard() {
           </CardFooter>
         </Card>
         
-        <Card>
+        <Card className="bg-gradient-to-br from-green-50 to-green-100 border-0 shadow-lg hover:shadow-xl transition-all duration-300">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">My Exams</CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium text-green-700">My Exams</CardTitle>
+            <Clock className="h-5 w-5 text-green-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{exams.length}</div>
-            <p className="text-xs text-muted-foreground mt-1">
+            <div className="text-3xl font-bold text-green-800">{exams.length}</div>
+            <p className="text-xs text-green-600 mt-1">
               Published: {exams.filter(e => e.published).length}
             </p>
           </CardContent>
@@ -58,7 +59,7 @@ export function TeacherDashboard() {
             <Button 
               variant="outline" 
               size="sm" 
-              className="w-full"
+              className="w-full hover:bg-green-50 border-green-200 text-green-700 hover:text-green-800"
               onClick={() => navigate('/exams')}
             >
               Manage Exams
@@ -67,58 +68,76 @@ export function TeacherDashboard() {
         </Card>
       </div>
       
-      <h2 className="text-xl font-semibold mt-8 mb-4">Quick Actions</h2>
-      <div className="grid gap-4 md:grid-cols-3">
-        <Button 
-          variant="outline"
-          className="h-auto p-6 flex flex-col items-start hover:bg-gray-50"
+      <h2 className="text-2xl font-bold mt-8 mb-6 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">Quick Actions</h2>
+      <div className="grid gap-6 md:grid-cols-3">
+        <Card 
+          className="cursor-pointer hover:bg-gradient-to-br hover:from-blue-50 hover:to-blue-100 transition-all duration-300 hover:scale-105 hover:shadow-xl border-0 shadow-lg bg-white/80 backdrop-blur-sm"
           onClick={() => navigate('/questions?action=create')}
         >
-          <h3 className="text-md font-semibold mb-2">Create Question</h3>
-          <p className="text-muted-foreground text-left">Add a new question to the question bank</p>
-        </Button>
+          <CardContent className="p-6">
+            <div className="flex items-center space-x-3 mb-3">
+              <div className="p-2 bg-blue-100 rounded-lg">
+                <Plus className="h-6 w-6 text-blue-600" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-800">Create Question</h3>
+            </div>
+            <p className="text-gray-600">Add a new question to the question bank</p>
+          </CardContent>
+        </Card>
         
-        <Button 
-          variant="outline"
-          className="h-auto p-6 flex flex-col items-start hover:bg-gray-50"
+        <Card 
+          className="cursor-pointer hover:bg-gradient-to-br hover:from-green-50 hover:to-green-100 transition-all duration-300 hover:scale-105 hover:shadow-xl border-0 shadow-lg bg-white/80 backdrop-blur-sm"
           onClick={() => navigate('/exams?action=create')}
         >
-          <h3 className="text-md font-semibold mb-2">Create Exam</h3>
-          <p className="text-muted-foreground text-left">Schedule and set up a new examination</p>
-        </Button>
+          <CardContent className="p-6">
+            <div className="flex items-center space-x-3 mb-3">
+              <div className="p-2 bg-green-100 rounded-lg">
+                <BookOpen className="h-6 w-6 text-green-600" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-800">Create Exam</h3>
+            </div>
+            <p className="text-gray-600">Schedule and set up a new examination</p>
+          </CardContent>
+        </Card>
         
-        <Button 
-          variant="outline"
-          className="h-auto p-6 flex flex-col items-start hover:bg-gray-50"
+        <Card 
+          className="cursor-pointer hover:bg-gradient-to-br hover:from-purple-50 hover:to-purple-100 transition-all duration-300 hover:scale-105 hover:shadow-xl border-0 shadow-lg bg-white/80 backdrop-blur-sm"
           onClick={() => navigate('/grading')}
         >
-          <h3 className="text-md font-semibold mb-2">Grade Submissions</h3>
-          <p className="text-muted-foreground text-left">Review and grade pending exam submissions</p>
-        </Button>
+          <CardContent className="p-6">
+            <div className="flex items-center space-x-3 mb-3">
+              <div className="p-2 bg-purple-100 rounded-lg">
+                <Users className="h-6 w-6 text-purple-600" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-800">Grade Submissions</h3>
+            </div>
+            <p className="text-gray-600">Review and grade pending exam submissions</p>
+          </CardContent>
+        </Card>
       </div>
       
-      <h2 className="text-xl font-semibold mt-8 mb-4">Upcoming Exams</h2>
+      <h2 className="text-2xl font-bold mt-8 mb-6 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">Upcoming Exams</h2>
       {exams.length > 0 ? (
         <div className="space-y-4">
           {exams.slice(0, 3).map((exam) => (
-            <Card key={exam.id}>
+            <Card key={exam.id} className="bg-white/80 backdrop-blur-sm border-0 shadow-lg hover:shadow-xl transition-all duration-300">
               <CardHeader>
-                <CardTitle>{exam.title}</CardTitle>
+                <CardTitle className="text-gray-800">{exam.title}</CardTitle>
               </CardHeader>
               <CardContent>
-                <p>{exam.description}</p>
-                <div className="flex items-center gap-4 mt-2">
+                <p className="text-gray-600 mb-3">{exam.description}</p>
+                <div className="flex items-center gap-6 text-sm">
                   <div>
-                    <p className="text-xs text-muted-foreground">Start</p>
-                    <p>{new Date(exam.startTime).toLocaleString()}</p>
+                    <p className="text-xs text-gray-500 font-medium">Start</p>
+                    <p className="text-gray-700">{new Date(exam.startTime).toLocaleString()}</p>
                   </div>
                   <div>
-                    <p className="text-xs text-muted-foreground">End</p>
-                    <p>{new Date(exam.endTime).toLocaleString()}</p>
+                    <p className="text-xs text-gray-500 font-medium">End</p>
+                    <p className="text-gray-700">{new Date(exam.endTime).toLocaleString()}</p>
                   </div>
                   <div>
-                    <p className="text-xs text-muted-foreground">Duration</p>
-                    <p>{exam.duration} min</p>
+                    <p className="text-xs text-gray-500 font-medium">Duration</p>
+                    <p className="text-gray-700">{exam.duration} min</p>
                   </div>
                 </div>
               </CardContent>
@@ -127,20 +146,25 @@ export function TeacherDashboard() {
                   variant="outline" 
                   size="sm"
                   onClick={() => navigate(`/exams/${exam.id}`)}
+                  className="hover:bg-blue-50 border-blue-200 text-blue-700"
                 >
                   Edit
                 </Button>
                 {exam.published ? (
-                  <Button variant="secondary" size="sm">Unpublish</Button>
+                  <Button variant="secondary" size="sm" className="hover:bg-gray-200">Unpublish</Button>
                 ) : (
-                  <Button size="sm">Publish</Button>
+                  <Button size="sm" className="bg-gradient-to-r from-green-500 to-blue-500 hover:from-green-600 hover:to-blue-600 text-white">Publish</Button>
                 )}
               </CardFooter>
             </Card>
           ))}
         </div>
       ) : (
-        <p className="text-muted-foreground">No exams scheduled yet.</p>
+        <div className="text-center py-12 bg-white/60 backdrop-blur-sm rounded-xl shadow-lg">
+          <BookOpen className="h-12 w-12 text-gray-400 mx-auto mb-4" />
+          <p className="text-gray-600 text-lg">No exams scheduled yet.</p>
+          <p className="text-gray-500 mt-1">Create your first exam to get started!</p>
+        </div>
       )}
     </div>
   );
