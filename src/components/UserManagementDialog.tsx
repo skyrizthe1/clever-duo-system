@@ -46,6 +46,9 @@ export function UserManagementDialog({ open, onOpenChange }: UserManagementDialo
       setIsAddingUser(false);
       setNewUser({ name: '', email: '', password: '', role: 'student' });
       toast.success('User created successfully');
+    },
+    onError: (error: any) => {
+      toast.error(error.message || 'Failed to create user');
     }
   });
 

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -9,7 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
 import { AlertTriangle, Clock, Shield } from 'lucide-react';
-import { Exam, Question, submitExam } from '@/services/api';
+import { Exam, Question, submitExam, getCurrentUser } from '@/services/api';
 import { useAntiCheating } from '@/hooks/useAntiCheating';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
@@ -28,6 +29,7 @@ export function ExamTaking({ exam, questions, open, onOpenChange, onSubmit }: Ex
   const [timeLeft, setTimeLeft] = useState(0);
   const [examStarted, setExamStarted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [hasSubmitted, setHasSubmitted] = useState(false);
   const queryClient = useQueryClient();
   
   const { violations, isTabActive } = useAntiCheating({
@@ -44,17 +46,18 @@ export function ExamTaking({ exam, questions, open, onOpenChange, onSubmit }: Ex
       setAnswers({});
       setCurrentQuestion(0);
       setIsSubmitting(false);
+      setHasSubmitted(false);
     }
   }, [exam, open]);
 
   useEffect(() => {
-    if (timeLeft > 0 && open && examStarted && !isSubmitting) {
+    if (timeLeft > 0 && open && examStarted && !isSubmitting && !hasSubmitted) {
       const timer = setTimeout(() => setTimeLeft(timeLeft - 1), 1000);
       return () => clearTimeout(timer);
-    } else if (timeLeft === 0 && open && examStarted && !isSubmitting) {
+    } else if (timeLeft === 0 && open && examStarted && !isSubmitting && !hasSubmitted) {
       handleSubmit();
     }
-  }, [timeLeft, open, examStarted, isSubmitting]);
+  }, [timeLeft, open, examStarted, isSubmitting, hasSubmitted]);
 
   if (!exam) return null;
 
@@ -71,20 +74,28 @@ export function ExamTaking({ exam, questions, open, onOpenChange, onSubmit }: Ex
   };
 
   const handleSubmit = async () => {
-    if (!examStarted || isSubmitting) {
+    if (!examStarted || isSubmitting || hasSubmitted) {
       return;
     }
     
     setIsSubmitting(true);
     
     try {
+      const user = await getCurrentUser();
+      if (!user) {
+        throw new Error('User not authenticated');
+      }
+
       await submitExam({
-        examId: exam.id,
-        examTitle: exam.title,
+        exam_id: exam.id,
+        student_id: user.id,
         answers: answers,
-        submittedAt: new Date(),
-        timeSpent: exam.duration * 60 - timeLeft
+        submitted_at: new Date().toISOString(),
+        time_spent: exam.duration * 60 - timeLeft,
+        graded: false,
       });
+      
+      setHasSubmitted(true);
       
       // Invalidate queries to refresh data
       await queryClient.invalidateQueries({ queryKey: ['submissions'] });
@@ -248,9 +259,9 @@ export function ExamTaking({ exam, questions, open, onOpenChange, onSubmit }: Ex
                     <Button 
                       onClick={handleSubmit} 
                       className="bg-green-600 hover:bg-green-700"
-                      disabled={isSubmitting}
+                      disabled={isSubmitting || hasSubmitted}
                     >
-                      {isSubmitting ? 'Submitting...' : 'Submit Exam'}
+                      {isSubmitting ? 'Submitting...' : hasSubmitted ? 'Submitted' : 'Submit Exam'}
                     </Button>
                   )}
                 </div>
