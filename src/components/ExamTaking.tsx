@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -10,9 +9,10 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
 import { AlertTriangle, Clock, Shield } from 'lucide-react';
-import { Exam, Question } from '@/services/api';
+import { Exam, Question, submitExam } from '@/services/api';
 import { useAntiCheating } from '@/hooks/useAntiCheating';
 import { toast } from 'sonner';
+import { useQueryClient } from '@tanstack/react-query';
 
 interface ExamTakingProps {
   exam: Exam | null;
@@ -27,6 +27,8 @@ export function ExamTaking({ exam, questions, open, onOpenChange, onSubmit }: Ex
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [timeLeft, setTimeLeft] = useState(0);
   const [examStarted, setExamStarted] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const queryClient = useQueryClient();
   
   const { violations, isTabActive } = useAntiCheating({
     isExamActive: open && examStarted,
@@ -41,17 +43,18 @@ export function ExamTaking({ exam, questions, open, onOpenChange, onSubmit }: Ex
       setExamStarted(false);
       setAnswers({});
       setCurrentQuestion(0);
+      setIsSubmitting(false);
     }
   }, [exam, open]);
 
   useEffect(() => {
-    if (timeLeft > 0 && open && examStarted) {
+    if (timeLeft > 0 && open && examStarted && !isSubmitting) {
       const timer = setTimeout(() => setTimeLeft(timeLeft - 1), 1000);
       return () => clearTimeout(timer);
-    } else if (timeLeft === 0 && open && examStarted) {
+    } else if (timeLeft === 0 && open && examStarted && !isSubmitting) {
       handleSubmit();
     }
-  }, [timeLeft, open, examStarted]);
+  }, [timeLeft, open, examStarted, isSubmitting]);
 
   if (!exam) return null;
 
@@ -67,21 +70,35 @@ export function ExamTaking({ exam, questions, open, onOpenChange, onSubmit }: Ex
     toast.info('Exam started! Good luck!');
   };
 
-  const handleSubmit = () => {
-    if (!examStarted) {
-      toast.error('Please start the exam first!');
+  const handleSubmit = async () => {
+    if (!examStarted || isSubmitting) {
       return;
     }
     
-    onSubmit({
-      examId: exam.id,
-      answers: answers,
-      submittedAt: new Date().toISOString(),
-      timeSpent: exam.duration * 60 - timeLeft
-    });
-    onOpenChange(false);
-    setExamStarted(false);
-    toast.success('Exam submitted successfully!');
+    setIsSubmitting(true);
+    
+    try {
+      await submitExam({
+        examId: exam.id,
+        examTitle: exam.title,
+        answers: answers,
+        submittedAt: new Date(),
+        timeSpent: exam.duration * 60 - timeLeft
+      });
+      
+      // Invalidate queries to refresh data
+      await queryClient.invalidateQueries({ queryKey: ['submissions'] });
+      await queryClient.invalidateQueries({ queryKey: ['exams'] });
+      
+      onOpenChange(false);
+      setExamStarted(false);
+      toast.success('Exam submitted successfully!');
+    } catch (error) {
+      console.error('Error submitting exam:', error);
+      toast.error('Failed to submit exam. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const formatTime = (seconds: number) => {
@@ -214,7 +231,7 @@ export function ExamTaking({ exam, questions, open, onOpenChange, onSubmit }: Ex
                 <Button
                   variant="outline"
                   onClick={() => setCurrentQuestion(Math.max(0, currentQuestion - 1))}
-                  disabled={currentQuestion === 0}
+                  disabled={currentQuestion === 0 || isSubmitting}
                 >
                   Previous
                 </Button>
@@ -223,12 +240,17 @@ export function ExamTaking({ exam, questions, open, onOpenChange, onSubmit }: Ex
                   {currentQuestion < examQuestions.length - 1 ? (
                     <Button
                       onClick={() => setCurrentQuestion(currentQuestion + 1)}
+                      disabled={isSubmitting}
                     >
                       Next
                     </Button>
                   ) : (
-                    <Button onClick={handleSubmit} className="bg-green-600 hover:bg-green-700">
-                      Submit Exam
+                    <Button 
+                      onClick={handleSubmit} 
+                      className="bg-green-600 hover:bg-green-700"
+                      disabled={isSubmitting}
+                    >
+                      {isSubmitting ? 'Submitting...' : 'Submit Exam'}
                     </Button>
                   )}
                 </div>

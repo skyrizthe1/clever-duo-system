@@ -1,3 +1,4 @@
+
 // Mock API service that simulates backend functionality
 import { toast } from "sonner";
 
@@ -62,7 +63,7 @@ export interface ExamSubmission {
   examTitle: string;
   studentId: string;
   studentName: string;
-  submittedAt: string;
+  submittedAt: Date;
   graded: boolean;
   score?: number;
   answers: Record<string, any>;
@@ -490,11 +491,16 @@ export async function submitExam(submission: Omit<ExamSubmission, "id" | "graded
     throw new Error("Unauthorized access");
   }
   
+  const exam = exams.find(e => e.id === submission.examId);
+  
   const newSubmission: ExamSubmission = {
     ...submission,
     id: Math.random().toString(36).substr(2, 9),
     graded: false,
-    submittedAt: new Date(submission.submittedAt)
+    submittedAt: new Date(submission.submittedAt),
+    studentId: currentUser.id,
+    studentName: currentUser.name,
+    examTitle: exam?.title || 'Unknown Exam'
   };
   
   examSubmissions = [...examSubmissions, newSubmission];
@@ -505,14 +511,20 @@ export async function submitExam(submission: Omit<ExamSubmission, "id" | "graded
 export async function getExamSubmissions(): Promise<ExamSubmission[]> {
   await delay(500);
   
-  if (!currentUser || (currentUser.role !== 'admin' && currentUser.role !== 'teacher')) {
+  if (!currentUser) {
     throw new Error("Unauthorized access");
   }
   
+  // Students can only see their own submissions
+  if (currentUser.role === 'student') {
+    return examSubmissions.filter(sub => sub.studentId === currentUser.id);
+  }
+  
+  // Teachers and admins can see all submissions
   return [...examSubmissions];
 }
 
-export async function gradeSubmission(submissionId: string, grade: number, feedback: Record<string, string>): Promise<ExamSubmission> {
+export async function gradeSubmission(submissionId: string, score: number, feedback?: Record<string, string>): Promise<ExamSubmission> {
   await delay(400);
   
   if (!currentUser || (currentUser.role !== 'admin' && currentUser.role !== 'teacher')) {
@@ -529,7 +541,7 @@ export async function gradeSubmission(submissionId: string, grade: number, feedb
   const updatedSubmission = {
     ...examSubmissions[submissionIndex],
     graded: true,
-    grade,
+    score,
     feedback
   };
   
