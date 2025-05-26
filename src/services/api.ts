@@ -59,12 +59,14 @@ export interface Exam {
 export interface ExamSubmission {
   id: string;
   examId: string;
+  examTitle: string;
   studentId: string;
-  answers: Record<string, any>;
-  submittedAt: Date;
+  studentName: string;
+  submittedAt: string;
   graded: boolean;
-  grade?: number;
-  feedback?: Record<string, string>;
+  score?: number;
+  answers: Record<string, any>;
+  timeSpent: number;
 }
 
 // Mock backend data

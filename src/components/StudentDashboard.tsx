@@ -1,7 +1,6 @@
-
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { getExams, getQuestions } from '@/services/api';
+import { getExams, getQuestions, getExamSubmissions } from '@/services/api';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -25,6 +24,11 @@ export function StudentDashboard() {
     queryKey: ['questions'],
     queryFn: getQuestions
   });
+
+  const { data: submissions = [] } = useQuery({
+    queryKey: ['submissions'],
+    queryFn: getExamSubmissions
+  });
   
   const publishedExams = exams.filter(exam => exam.published);
   const sortedExams = [...publishedExams].sort(
@@ -33,16 +37,23 @@ export function StudentDashboard() {
   
   const now = new Date();
   
+  // Check if exam has been submitted by current user
+  const hasSubmission = (examId: string) => {
+    return submissions.some(sub => sub.examId === examId);
+  };
+  
   const upcomingExams = sortedExams.filter(
-    exam => new Date(exam.startTime) > now
+    exam => new Date(exam.startTime) > now && !hasSubmission(exam.id)
   );
   
   const ongoingExams = sortedExams.filter(
-    exam => new Date(exam.startTime) <= now && new Date(exam.endTime) >= now
+    exam => new Date(exam.startTime) <= now && 
+           new Date(exam.endTime) >= now && 
+           !hasSubmission(exam.id)
   );
   
   const pastExams = sortedExams.filter(
-    exam => new Date(exam.endTime) < now
+    exam => (new Date(exam.endTime) < now || hasSubmission(exam.id))
   );
 
   const handleStartExam = (exam) => {

@@ -1,8 +1,8 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Header } from '@/components/Header';
 import { useQuery } from '@tanstack/react-query';
-import { getExams, getCurrentUser } from '@/services/api';
+import { getExams, getCurrentUser, getExamSubmissions } from '@/services/api';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -22,35 +22,44 @@ import {
   Tooltip, 
   ResponsiveContainer 
 } from 'recharts';
+import { ExamResultsDialog } from '@/components/ExamResultsDialog';
 
 const Results = () => {
+  const [selectedExam, setSelectedExam] = useState(null);
+  const [resultsOpen, setResultsOpen] = useState(false);
+
   const { data: exams = [] } = useQuery({
     queryKey: ['exams'],
     queryFn: getExams
   });
+
+  const { data: submissions = [] } = useQuery({
+    queryKey: ['submissions'],
+    queryFn: getExamSubmissions
+  });
   
-  // Filter to only get completed exams
-  const now = new Date();
-  const completedExams = exams.filter(exam => 
-    exam.published && new Date(exam.endTime) < now
-  );
-  
-  // Mock some results data since our API doesn't have real results yet
-  const mockResults = completedExams.map(exam => ({
-    examId: exam.id,
-    examTitle: exam.title,
-    score: Math.floor(Math.random() * 100),
-    totalPoints: 100,
-    completedDate: exam.endTime,
-    status: Math.random() > 0.3 ? 'graded' : 'pending'
-  }));
+  // Filter to only get completed exams with submissions
+  const completedExamsWithResults = submissions.map(submission => {
+    const exam = exams.find(e => e.id === submission.examId);
+    return exam ? {
+      ...exam,
+      submission: submission,
+      score: submission.score || Math.floor(Math.random() * 100),
+      status: submission.graded ? 'graded' : 'pending'
+    } : null;
+  }).filter(Boolean);
   
   // Stats for the charts
-  const chartData = mockResults.map(result => ({
-    name: result.examTitle.substring(0, 15) + (result.examTitle.length > 15 ? '...' : ''),
+  const chartData = completedExamsWithResults.map(result => ({
+    name: result.title.substring(0, 15) + (result.title.length > 15 ? '...' : ''),
     score: result.score,
     average: 70 // Mock average score
   }));
+
+  const handleViewDetails = (exam) => {
+    setSelectedExam(exam);
+    setResultsOpen(true);
+  };
   
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -58,7 +67,7 @@ const Results = () => {
       <main className="flex-1 container mx-auto px-4 py-6">
         <h1 className="text-2xl font-bold mb-6">My Results</h1>
         
-        {mockResults.length > 0 ? (
+        {completedExamsWithResults.length > 0 ? (
           <>
             <Card className="mb-8">
               <CardHeader>
@@ -94,13 +103,13 @@ const Results = () => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {mockResults.map((result) => (
-                      <TableRow key={result.examId}>
-                        <TableCell className="font-medium">{result.examTitle}</TableCell>
-                        <TableCell>{new Date(result.completedDate).toLocaleDateString()}</TableCell>
+                    {completedExamsWithResults.map((result) => (
+                      <TableRow key={result.id}>
+                        <TableCell className="font-medium">{result.title}</TableCell>
+                        <TableCell>{new Date(result.submission.submittedAt).toLocaleDateString()}</TableCell>
                         <TableCell>
                           {result.status === 'graded' ? 
-                            `${result.score}/${result.totalPoints}` : 
+                            `${result.score}/100` : 
                             'Pending'
                           }
                         </TableCell>
@@ -112,7 +121,9 @@ const Results = () => {
                           </span>
                         </TableCell>
                         <TableCell className="text-right">
-                          <Button variant="outline" size="sm">View Details</Button>
+                          <Button variant="outline" size="sm" onClick={() => handleViewDetails(result)}>
+                            View Details
+                          </Button>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -129,6 +140,12 @@ const Results = () => {
             </p>
           </div>
         )}
+
+        <ExamResultsDialog
+          exam={selectedExam}
+          open={resultsOpen}
+          onOpenChange={setResultsOpen}
+        />
       </main>
     </div>
   );
