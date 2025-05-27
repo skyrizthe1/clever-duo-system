@@ -292,7 +292,7 @@ export async function getQuestions(): Promise<Question[]> {
   })) || [];
 }
 
-export async function createQuestion(question: Omit<Question, "id" | "created_by">): Promise<Question> {
+export async function createQuestion(question: Omit<Question, "id" | "created_by" | "created_at" | "updated_at">): Promise<Question> {
   const { data: { user } } = await supabase.auth.getUser();
   
   if (!user) {
@@ -369,7 +369,7 @@ export async function getExams(): Promise<Exam[]> {
   return data || [];
 }
 
-export async function createExam(exam: Omit<Exam, "id" | "created_by">): Promise<Exam> {
+export async function createExam(exam: Omit<Exam, "id" | "created_by" | "created_at" | "updated_at">): Promise<Exam> {
   const { data: { user } } = await supabase.auth.getUser();
   
   if (!user) {
@@ -439,7 +439,11 @@ export async function submitExam(submission: Omit<ExamSubmission, "id">): Promis
   }
 
   toast.success("Exam submitted successfully");
-  return data;
+  return {
+    ...data,
+    answers: data.answers as Record<string, any>,
+    feedback: data.feedback as Record<string, string> | undefined
+  };
 }
 
 export async function getExamSubmissions(): Promise<ExamSubmission[]> {
@@ -457,7 +461,11 @@ export async function getExamSubmissions(): Promise<ExamSubmission[]> {
     throw new Error(error.message);
   }
 
-  return data || [];
+  return data?.map(item => ({
+    ...item,
+    answers: item.answers as Record<string, any>,
+    feedback: item.feedback as Record<string, string> | undefined
+  })) || [];
 }
 
 export async function gradeSubmission(
@@ -482,5 +490,9 @@ export async function gradeSubmission(
   }
 
   toast.success("Submission graded successfully");
-  return data;
+  return {
+    ...data,
+    answers: data.answers as Record<string, any>,
+    feedback: data.feedback as Record<string, string> | undefined
+  };
 }

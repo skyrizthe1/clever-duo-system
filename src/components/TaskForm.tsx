@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -14,7 +13,7 @@ import { Task, TaskStatus, TaskPriority } from '@/services/api';
 
 const taskSchema = z.object({
   title: z.string().min(1, 'Title is required'),
-  description: z.string().optional(),
+  description: z.string().min(1, 'Description is required'),
   status: z.enum(['todo', 'inprogress', 'review', 'done']),
   priority: z.enum(['low', 'medium', 'high']),
   due_date: z.string().optional(),
@@ -58,7 +57,10 @@ export function TaskForm({ onSubmit, initialData, onCancel }: TaskFormProps) {
 
   const handleSubmit = (data: TaskFormData) => {
     onSubmit({
-      ...data,
+      title: data.title,
+      description: data.description || '',
+      status: data.status,
+      priority: data.priority,
       tags,
       due_date: data.due_date || undefined,
       assigned_to: data.assigned_to || undefined,
@@ -80,9 +82,12 @@ export function TaskForm({ onSubmit, initialData, onCancel }: TaskFormProps) {
           <Label htmlFor="description">Description</Label>
           <Textarea 
             {...form.register('description')} 
-            placeholder="Task description (optional)"
+            placeholder="Task description"
             rows={3}
           />
+          {form.formState.errors.description && (
+            <p className="text-red-500 text-sm mt-1">{form.formState.errors.description.message}</p>
+          )}
         </div>
 
         <div className="grid grid-cols-2 gap-4">
