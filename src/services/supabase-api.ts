@@ -286,7 +286,10 @@ export async function getQuestions(): Promise<Question[]> {
     throw new Error(error.message);
   }
 
-  return data || [];
+  return data?.map(item => ({
+    ...item,
+    correct_answer: item.correct_answer as string | string[]
+  })) || [];
 }
 
 export async function createQuestion(question: Omit<Question, "id" | "created_by">): Promise<Question> {
@@ -311,7 +314,10 @@ export async function createQuestion(question: Omit<Question, "id" | "created_by
   }
 
   toast.success("Question created successfully");
-  return data;
+  return {
+    ...data,
+    correct_answer: data.correct_answer as string | string[]
+  };
 }
 
 export async function updateQuestion(id: string, updates: Partial<Question>): Promise<Question> {
@@ -328,7 +334,10 @@ export async function updateQuestion(id: string, updates: Partial<Question>): Pr
   }
 
   toast.success("Question updated successfully");
-  return data;
+  return {
+    ...data,
+    correct_answer: data.correct_answer as string | string[]
+  };
 }
 
 export async function deleteQuestion(id: string): Promise<void> {

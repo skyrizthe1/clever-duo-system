@@ -1,191 +1,178 @@
 
-import React from 'react';
-import { zodResolver } from '@hookform/resolvers/zod';
+import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Button } from '@/components/ui/button';
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { createTask, updateTask } from '@/services/api';
-import { Task, TaskPriority, TaskStatus } from '@/services/api';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
+import { X } from 'lucide-react';
+import { Task, TaskStatus, TaskPriority } from '@/services/api';
 
-// The schema defines the shape of the form data
-const formSchema = z.object({
-  title: z.string().min(3, 'Title must be at least 3 characters'),
-  description: z.string().min(5, 'Description must be at least 5 characters'),
+const taskSchema = z.object({
+  title: z.string().min(1, 'Title is required'),
+  description: z.string().optional(),
   status: z.enum(['todo', 'inprogress', 'review', 'done']),
   priority: z.enum(['low', 'medium', 'high']),
-  tags: z.string(),
+  due_date: z.string().optional(),
+  assigned_to: z.string().optional(),
 });
 
-type TaskFormProps = {
-  task?: Task;
-  onSuccess?: () => void;
-};
+type TaskFormData = z.infer<typeof taskSchema>;
 
-export function TaskForm({ task, onSuccess }: TaskFormProps) {
-  // Initialize the form with default values or existing task values
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
-    defaultValues: task
-      ? {
-          title: task.title,
-          description: task.description,
-          status: task.status,
-          priority: task.priority,
-          tags: task.tags.join(', '),
-        }
-      : {
-          title: '',
-          description: '',
-          status: 'todo' as TaskStatus,
-          priority: 'medium' as TaskPriority,
-          tags: '',
-        },
+interface TaskFormProps {
+  onSubmit: (task: Omit<Task, 'id' | 'created_at' | 'created_by'>) => void;
+  initialData?: Task;
+  onCancel?: () => void;
+}
+
+export function TaskForm({ onSubmit, initialData, onCancel }: TaskFormProps) {
+  const [tags, setTags] = useState<string[]>(initialData?.tags || []);
+  const [newTag, setNewTag] = useState('');
+
+  const form = useForm<TaskFormData>({
+    resolver: zodResolver(taskSchema),
+    defaultValues: {
+      title: initialData?.title || '',
+      description: initialData?.description || '',
+      status: initialData?.status || 'todo',
+      priority: initialData?.priority || 'medium',
+      due_date: initialData?.due_date ? new Date(initialData.due_date).toISOString().split('T')[0] : '',
+      assigned_to: initialData?.assigned_to || '',
+    },
   });
 
-  // Handle form submission
-  const onSubmit = async (values: z.infer<typeof formSchema>) => {
-    try {
-      // Convert comma-separated tags string to array
-      const tagsArray = values.tags.split(',').map(tag => tag.trim()).filter(tag => tag !== '');
-      
-      if (task) {
-        // Update existing task
-        await updateTask(task.id, {
-          ...values,
-          tags: tagsArray,
-        });
-      } else {
-        // Create new task - fix the type error by ensuring all required properties
-        await createTask({
-          title: values.title,
-          description: values.description,
-          status: values.status,
-          priority: values.priority,
-          tags: tagsArray,
-          assignedTo: undefined,
-          dueDate: undefined
-        });
-      }
-      
-      if (onSuccess) {
-        onSuccess();
-      }
-    } catch (error) {
-      console.error('Error saving task:', error);
+  const addTag = () => {
+    if (newTag.trim() && !tags.includes(newTag.trim())) {
+      setTags([...tags, newTag.trim()]);
+      setNewTag('');
     }
   };
 
+  const removeTag = (tagToRemove: string) => {
+    setTags(tags.filter(tag => tag !== tagToRemove));
+  };
+
+  const handleSubmit = (data: TaskFormData) => {
+    onSubmit({
+      ...data,
+      tags,
+      due_date: data.due_date || undefined,
+      assigned_to: data.assigned_to || undefined,
+    });
+  };
+
   return (
-    <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-        <FormField
-          control={form.control}
-          name="title"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Title</FormLabel>
-              <FormControl>
-                <Input placeholder="Task title" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
+    <div className="space-y-6">
+      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+        <div>
+          <Label htmlFor="title">Title</Label>
+          <Input {...form.register('title')} placeholder="Task title" />
+          {form.formState.errors.title && (
+            <p className="text-red-500 text-sm mt-1">{form.formState.errors.title.message}</p>
           )}
-        />
+        </div>
 
-        <FormField
-          control={form.control}
-          name="description"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Description</FormLabel>
-              <FormControl>
-                <Textarea placeholder="Task description" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
+        <div>
+          <Label htmlFor="description">Description</Label>
+          <Textarea 
+            {...form.register('description')} 
+            placeholder="Task description (optional)"
+            rows={3}
+          />
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <Label htmlFor="status">Status</Label>
+            <Select value={form.watch('status')} onValueChange={(value: TaskStatus) => form.setValue('status', value)}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="todo">To Do</SelectItem>
+                <SelectItem value="inprogress">In Progress</SelectItem>
+                <SelectItem value="review">Review</SelectItem>
+                <SelectItem value="done">Done</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div>
+            <Label htmlFor="priority">Priority</Label>
+            <Select value={form.watch('priority')} onValueChange={(value: TaskPriority) => form.setValue('priority', value)}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="low">Low</SelectItem>
+                <SelectItem value="medium">Medium</SelectItem>
+                <SelectItem value="high">High</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <Label htmlFor="due_date">Due Date</Label>
+            <Input type="date" {...form.register('due_date')} />
+          </div>
+
+          <div>
+            <Label htmlFor="assigned_to">Assigned To</Label>
+            <Input {...form.register('assigned_to')} placeholder="User ID or email" />
+          </div>
+        </div>
+
+        <div>
+          <Label>Tags</Label>
+          <div className="space-y-2">
+            <div className="flex gap-2">
+              <Input
+                value={newTag}
+                onChange={(e) => setNewTag(e.target.value)}
+                placeholder="Add a tag..."
+                onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addTag())}
+              />
+              <Button type="button" onClick={addTag} size="sm">
+                Add
+              </Button>
+            </div>
+            
+            <div className="flex flex-wrap gap-2">
+              {tags.map((tag, index) => (
+                <Badge key={index} variant="secondary" className="flex items-center gap-1">
+                  {tag}
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-4 w-4 p-0"
+                    onClick={() => removeTag(tag)}
+                  >
+                    <X className="h-3 w-3" />
+                  </Button>
+                </Badge>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="flex gap-3 justify-end">
+          {onCancel && (
+            <Button type="button" variant="outline" onClick={onCancel}>
+              Cancel
+            </Button>
           )}
-        />
-
-        <FormField
-          control={form.control}
-          name="status"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Status</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value}>
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a status" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  <SelectItem value="todo">Todo</SelectItem>
-                  <SelectItem value="inprogress">In Progress</SelectItem>
-                  <SelectItem value="review">Review</SelectItem>
-                  <SelectItem value="done">Done</SelectItem>
-                </SelectContent>
-              </Select>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name="priority"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Priority</FormLabel>
-              <Select onValueChange={field.onChange} defaultValue={field.value}>
-                <FormControl>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select a priority" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  <SelectItem value="low">Low</SelectItem>
-                  <SelectItem value="medium">Medium</SelectItem>
-                  <SelectItem value="high">High</SelectItem>
-                </SelectContent>
-              </Select>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
-          control={form.control}
-          name="tags"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Tags</FormLabel>
-              <FormControl>
-                <Input placeholder="Tags (comma separated)" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <Button type="submit">Submit</Button>
+          <Button type="submit">
+            {initialData ? 'Update Task' : 'Create Task'}
+          </Button>
+        </div>
       </form>
-    </Form>
+    </div>
   );
 }
