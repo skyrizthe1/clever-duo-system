@@ -2,7 +2,7 @@
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
-// Types that match our database schema
+// Types that match our database schema (using snake_case to match Supabase)
 export type UserRole = "admin" | "teacher" | "student";
 export type TaskStatus = "todo" | "inprogress" | "review" | "done";
 export type TaskPriority = "low" | "medium" | "high";
@@ -79,6 +79,8 @@ export interface ExamSubmission {
 
 // Authentication
 export async function registerUser(userData: RegisterUserData): Promise<User> {
+  console.log('Registering user with data:', userData);
+  
   const { data, error } = await supabase.auth.signUp({
     email: userData.email,
     password: userData.password,
@@ -96,8 +98,10 @@ export async function registerUser(userData: RegisterUserData): Promise<User> {
   }
 
   if (!data.user) {
-    throw new Error('Registration failed');
+    throw new Error('Registration failed - no user returned');
   }
+
+  console.log('User registered successfully:', data.user);
 
   return {
     id: data.user.id,
@@ -413,7 +417,7 @@ export async function deleteExam(id: string): Promise<void> {
 }
 
 // Exam Submissions
-export async function submitExam(submission: Omit<ExamSubmission, "id" | "graded">): Promise<ExamSubmission> {
+export async function submitExam(submission: Omit<ExamSubmission, "id">): Promise<ExamSubmission> {
   const { data, error } = await supabase
     .from('exam_submissions')
     .insert(submission)

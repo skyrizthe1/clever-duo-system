@@ -92,7 +92,7 @@ export function ExamResultsDialog({ exam, open, onOpenChange }: ExamResultsDialo
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-sm font-medium">{new Date(exam.endTime).toLocaleDateString()}</div>
+                <div className="text-sm font-medium">{new Date(exam.end_time).toLocaleDateString()}</div>
               </CardContent>
             </Card>
           </div>

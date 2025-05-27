@@ -17,9 +17,9 @@ export function ExamDetailsDialog({ exam, open, onOpenChange, onStartExam }: Exa
   if (!exam) return null;
 
   const now = new Date();
-  const isOngoing = new Date(exam.startTime) <= now && new Date(exam.endTime) >= now;
-  const isUpcoming = new Date(exam.startTime) > now;
-  const isCompleted = new Date(exam.endTime) < now;
+  const isOngoing = new Date(exam.start_time) <= now && new Date(exam.end_time) >= now;
+  const isUpcoming = new Date(exam.start_time) > now;
+  const isCompleted = new Date(exam.end_time) < now;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -43,7 +43,7 @@ export function ExamDetailsDialog({ exam, open, onOpenChange, onStartExam }: Exa
               <Calendar className="h-5 w-5 text-blue-600" />
               <div>
                 <p className="text-sm font-medium text-blue-800">Start Time</p>
-                <p className="text-blue-700">{new Date(exam.startTime).toLocaleString()}</p>
+                <p className="text-blue-700">{new Date(exam.start_time).toLocaleString()}</p>
               </div>
             </div>
 
@@ -51,7 +51,7 @@ export function ExamDetailsDialog({ exam, open, onOpenChange, onStartExam }: Exa
               <Calendar className="h-5 w-5 text-green-600" />
               <div>
                 <p className="text-sm font-medium text-green-800">End Time</p>
-                <p className="text-green-700">{new Date(exam.endTime).toLocaleString()}</p>
+                <p className="text-green-700">{new Date(exam.end_time).toLocaleString()}</p>
               </div>
             </div>
 
