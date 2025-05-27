@@ -39,8 +39,6 @@ type FormValues = z.infer<typeof formSchema>;
 
 const Register = () => {
   const navigate = useNavigate();
-  const [isSubmitting, setIsSubmitting] = React.useState(false);
-  
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -53,26 +51,17 @@ const Register = () => {
   });
 
   const onSubmit = async (values: FormValues) => {
-    if (isSubmitting) return;
-    
     try {
-      setIsSubmitting(true);
-      
       await registerUser({
         name: values.name,
         email: values.email,
         password: values.password,
         role: values.role as UserRole,
       });
-      
       toast.success('Registration successful! You can now login.');
       navigate('/login');
-    } catch (error: any) {
-      console.error('Registration error:', error);
-      const errorMessage = error.message || 'Registration failed. Please try again.';
-      toast.error(errorMessage);
-    } finally {
-      setIsSubmitting(false);
+    } catch (error) {
+      toast.error('Registration failed. Please try again.');
     }
   };
 
@@ -168,8 +157,8 @@ const Register = () => {
               )}
             />
 
-            <Button type="submit" className="w-full mt-6" disabled={isSubmitting}>
-              {isSubmitting ? 'Creating account...' : 'Register'}
+            <Button type="submit" className="w-full mt-6">
+              Register
             </Button>
           </form>
         </Form>

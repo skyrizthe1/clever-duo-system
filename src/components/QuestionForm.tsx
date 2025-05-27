@@ -1,226 +1,284 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Button } from '@/components/ui/button';
+import { Question } from '@/services/api';
+import { 
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Button } from '@/components/ui/button';
+import { 
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
-import { Badge } from '@/components/ui/badge';
-import { Plus, X } from 'lucide-react';
-import { Question, QuestionType } from '@/services/api';
+import { X, Plus } from 'lucide-react';
 
 const questionSchema = z.object({
+  content: z.string().min(5, 'Question content is required and must be at least 5 characters'),
   type: z.enum(['single-choice', 'multiple-choice', 'fill-blank', 'short-answer']),
-  content: z.string().min(10, 'Question content must be at least 10 characters'),
+  points: z.coerce.number().min(1, 'Points must be at least 1'),
   category: z.string().min(1, 'Category is required'),
-  points: z.number().min(1, 'Points must be at least 1'),
 });
 
-type QuestionFormData = z.infer<typeof questionSchema>;
-
-interface QuestionFormProps {
-  onSubmit: (question: Omit<Question, 'id' | 'created_by' | 'created_at' | 'updated_at'>) => void;
+type QuestionFormProps = {
+  onSubmit: (data: any) => void;
+  onCancel: () => void;
   initialData?: Question;
-  onCancel?: () => void;
-}
+  isEditing?: boolean;
+};
 
-export function QuestionForm({ onSubmit, initialData, onCancel }: QuestionFormProps) {
+export function QuestionForm({ onSubmit, onCancel, initialData, isEditing = false }: QuestionFormProps) {
   const [options, setOptions] = useState<string[]>(initialData?.options || []);
-  const [newOption, setNewOption] = useState('');
   const [correctAnswers, setCorrectAnswers] = useState<string[]>(
-    Array.isArray(initialData?.correct_answer) 
-      ? initialData.correct_answer 
-      : initialData?.correct_answer ? [initialData.correct_answer as string] : []
+    Array.isArray(initialData?.correctAnswer) 
+      ? initialData?.correctAnswer 
+      : initialData?.correctAnswer 
+        ? [initialData.correctAnswer] 
+        : []
   );
-
-  const form = useForm<QuestionFormData>({
+  const [newOption, setNewOption] = useState('');
+  
+  const form = useForm<z.infer<typeof questionSchema>>({
     resolver: zodResolver(questionSchema),
     defaultValues: {
-      type: initialData?.type || 'single-choice',
       content: initialData?.content || '',
-      category: initialData?.category || '',
+      type: initialData?.type || 'single-choice',
       points: initialData?.points || 1,
+      category: initialData?.category || '',
     },
   });
-
+  
   const questionType = form.watch('type');
 
-  const addOption = () => {
+  // Reset options when question type changes
+  useEffect(() => {
+    if (questionType === 'short-answer' || questionType === 'fill-blank') {
+      setOptions([]);
+    }
+  }, [questionType]);
+  
+  const handleAddOption = () => {
     if (newOption.trim() && !options.includes(newOption.trim())) {
       setOptions([...options, newOption.trim()]);
       setNewOption('');
     }
   };
-
-  const removeOption = (index: number) => {
-    const newOptions = options.filter((_, i) => i !== index);
+  
+  const handleRemoveOption = (index: number) => {
+    const newOptions = [...options];
+    newOptions.splice(index, 1);
     setOptions(newOptions);
     
-    // Remove from correct answers if it was selected
-    const removedOption = options[index];
-    setCorrectAnswers(correctAnswers.filter(answer => answer !== removedOption));
+    // Also remove from correct answers if it's there
+    setCorrectAnswers(correctAnswers.filter(ca => ca !== options[index]));
   };
-
+  
   const toggleCorrectAnswer = (option: string) => {
     if (questionType === 'single-choice') {
       setCorrectAnswers([option]);
-    } else if (questionType === 'multiple-choice') {
+    } else {
       if (correctAnswers.includes(option)) {
-        setCorrectAnswers(correctAnswers.filter(answer => answer !== option));
+        setCorrectAnswers(correctAnswers.filter(ca => ca !== option));
       } else {
         setCorrectAnswers([...correctAnswers, option]);
       }
     }
   };
-
-  const handleSubmit = (data: QuestionFormData) => {
-    let correct_answer: string | string[];
-    
-    if (data.type === 'single-choice') {
-      correct_answer = correctAnswers[0] || '';
-    } else if (data.type === 'multiple-choice') {
-      correct_answer = correctAnswers;
-    } else {
-      correct_answer = correctAnswers[0] || '';
+  
+  const handleSubmit = (values: z.infer<typeof questionSchema>) => {
+    if ((questionType === 'single-choice' || questionType === 'multiple-choice') && 
+        (options.length < 2 || correctAnswers.length === 0)) {
+      form.setError('type', { 
+        message: 'Multiple choice questions must have at least 2 options and 1 correct answer' 
+      });
+      return;
     }
-
-    onSubmit({
-      ...data,
-      options: (data.type === 'single-choice' || data.type === 'multiple-choice') ? options : undefined,
-      correct_answer,
-    });
+    
+    const finalData = {
+      ...values,
+      options: (questionType === 'single-choice' || questionType === 'multiple-choice') ? options : undefined,
+      correctAnswer: questionType === 'multiple-choice' ? correctAnswers : correctAnswers[0] || '',
+      createdBy: initialData?.createdBy || 'current-user-id', // In a real app, this would be the current user's ID
+    };
+    
+    onSubmit(finalData);
   };
 
-  const needsOptions = questionType === 'single-choice' || questionType === 'multiple-choice';
-
   return (
-    <div className="space-y-6">
-      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <Label htmlFor="type">Question Type</Label>
-            <Select 
-              value={form.watch('type')} 
-              onValueChange={(value: QuestionType) => {
-                form.setValue('type', value);
-                setOptions([]);
-                setCorrectAnswers([]);
-              }}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="single-choice">Single Choice</SelectItem>
-                <SelectItem value="multiple-choice">Multiple Choice</SelectItem>
-                <SelectItem value="fill-blank">Fill in the Blank</SelectItem>
-                <SelectItem value="short-answer">Short Answer</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div>
-            <Label htmlFor="category">Category</Label>
-            <Input {...form.register('category')} placeholder="e.g., Mathematics, Science" />
-            {form.formState.errors.category && (
-              <p className="text-red-500 text-sm mt-1">{form.formState.errors.category.message}</p>
+    <DialogContent className="sm:max-w-[625px]">
+      <DialogHeader>
+        <DialogTitle>{isEditing ? 'Edit Question' : 'Create New Question'}</DialogTitle>
+        <DialogDescription>
+          {isEditing 
+            ? 'Make changes to this question.' 
+            : 'Add a new question to your question bank.'}
+        </DialogDescription>
+      </DialogHeader>
+      
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4 mt-4">
+          <FormField
+            control={form.control}
+            name="type"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Question Type</FormLabel>
+                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <FormControl>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select question type" />
+                    </SelectTrigger>
+                  </FormControl>
+                  <SelectContent>
+                    <SelectItem value="single-choice">Single Choice</SelectItem>
+                    <SelectItem value="multiple-choice">Multiple Choice</SelectItem>
+                    <SelectItem value="fill-blank">Fill in the Blank</SelectItem>
+                    <SelectItem value="short-answer">Short Answer</SelectItem>
+                  </SelectContent>
+                </Select>
+                <FormMessage />
+              </FormItem>
             )}
-          </div>
-        </div>
-
-        <div>
-          <Label htmlFor="content">Question Content</Label>
-          <Textarea 
-            {...form.register('content')} 
-            placeholder="Enter your question here..."
-            rows={3}
           />
-          {form.formState.errors.content && (
-            <p className="text-red-500 text-sm mt-1">{form.formState.errors.content.message}</p>
-          )}
-        </div>
-
-        <div>
-          <Label htmlFor="points">Points</Label>
-          <Input 
-            type="number" 
-            {...form.register('points', { valueAsNumber: true })} 
-            min="1" 
-            max="100"
+          
+          <FormField
+            control={form.control}
+            name="content"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Question Content</FormLabel>
+                <FormControl>
+                  <Textarea 
+                    placeholder="Enter your question here..."
+                    {...field}
+                    className="min-h-[100px]"
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
           />
-          {form.formState.errors.points && (
-            <p className="text-red-500 text-sm mt-1">{form.formState.errors.points.message}</p>
-          )}
-        </div>
-
-        {needsOptions && (
-          <div>
-            <Label>Options</Label>
+          
+          {(questionType === 'single-choice' || questionType === 'multiple-choice') && (
             <div className="space-y-2">
+              <FormLabel>Options</FormLabel>
               <div className="flex gap-2">
-                <Input
+                <Input 
+                  placeholder="Add an option..."
                   value={newOption}
                   onChange={(e) => setNewOption(e.target.value)}
-                  placeholder="Add an option..."
-                  onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addOption())}
+                  className="flex-1"
                 />
-                <Button type="button" onClick={addOption} size="sm">
-                  <Plus className="h-4 w-4" />
+                <Button type="button" onClick={handleAddOption} size="sm">
+                  <Plus className="h-4 w-4" /> Add
                 </Button>
               </div>
               
-              <div className="space-y-2">
+              <div className="space-y-2 mt-2">
                 {options.map((option, index) => (
-                  <div key={index} className="flex items-center gap-2 p-2 border rounded">
+                  <div key={index} className="flex items-center gap-2 p-2 border rounded-md">
+                    <input 
+                      type={questionType === 'single-choice' ? 'radio' : 'checkbox'}
+                      checked={correctAnswers.includes(option)}
+                      onChange={() => toggleCorrectAnswer(option)}
+                      className="h-4 w-4"
+                    />
                     <span className="flex-1">{option}</span>
-                    <Button
-                      type="button"
-                      variant={correctAnswers.includes(option) ? "default" : "outline"}
-                      size="sm"
-                      onClick={() => toggleCorrectAnswer(option)}
-                    >
-                      {correctAnswers.includes(option) ? 'Correct' : 'Mark Correct'}
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => removeOption(index)}
+                    <Button 
+                      type="button" 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={() => handleRemoveOption(index)}
                     >
                       <X className="h-4 w-4" />
                     </Button>
                   </div>
                 ))}
+                
+                {options.length === 0 && (
+                  <p className="text-sm text-muted-foreground">No options added yet.</p>
+                )}
               </div>
             </div>
-          </div>
-        )}
-
-        {!needsOptions && (
-          <div>
-            <Label htmlFor="correct-answer">Correct Answer</Label>
-            <Input
-              value={correctAnswers[0] || ''}
-              onChange={(e) => setCorrectAnswers([e.target.value])}
-              placeholder="Enter the correct answer..."
+          )}
+          
+          {(questionType === 'fill-blank' || questionType === 'short-answer') && (
+            <FormItem>
+              <FormLabel>Correct Answer</FormLabel>
+              <FormControl>
+                <Input
+                  placeholder="Enter the correct answer..."
+                  value={correctAnswers[0] || ''}
+                  onChange={(e) => setCorrectAnswers([e.target.value])}
+                />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+          
+          <div className="grid grid-cols-2 gap-4">
+            <FormField
+              control={form.control}
+              name="category"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Category</FormLabel>
+                  <FormControl>
+                    <Input placeholder="e.g., Mathematics, Science, etc." {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            
+            <FormField
+              control={form.control}
+              name="points"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Points</FormLabel>
+                  <FormControl>
+                    <Input 
+                      type="number" 
+                      placeholder="1" 
+                      {...field} 
+                      min={1}
+                      max={100}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
           </div>
-        )}
-
-        <div className="flex gap-3 justify-end">
-          {onCancel && (
+          
+          <div className="flex justify-end gap-2 pt-4">
             <Button type="button" variant="outline" onClick={onCancel}>
               Cancel
             </Button>
-          )}
-          <Button type="submit">
-            {initialData ? 'Update Question' : 'Create Question'}
-          </Button>
-        </div>
-      </form>
-    </div>
+            <Button type="submit">
+              {isEditing ? 'Update' : 'Create'} Question
+            </Button>
+          </div>
+        </form>
+      </Form>
+    </DialogContent>
   );
 }

@@ -39,7 +39,7 @@ const Login = () => {
   });
 
   const onSubmit = async (values: FormValues) => {
-    if (isSubmitting) return;
+    if (isSubmitting) return; // Prevent double submission
     
     try {
       setIsSubmitting(true);
@@ -61,10 +61,9 @@ const Login = () => {
         navigate('/', { replace: true });
       }, 500);
       
-    } catch (error: any) {
+    } catch (error) {
       console.error('Login error:', error);
-      const errorMessage = error.message || 'Login failed. Please check your credentials.';
-      toast.error(errorMessage);
+      toast.error('Login failed. Please check your credentials.');
     } finally {
       setIsSubmitting(false);
     }
