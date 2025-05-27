@@ -1,4 +1,3 @@
-
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -77,38 +76,45 @@ export interface ExamSubmission {
   feedback?: Record<string, string>;
 }
 
-// Authentication
+// Authentication - FIXED to use Supabase Auth properly
 export async function registerUser(userData: RegisterUserData): Promise<User> {
-  console.log('Registering user with data:', userData);
+  console.log('Registering user with Supabase Auth:', userData);
   
-  const { data, error } = await supabase.auth.signUp({
-    email: userData.email,
-    password: userData.password,
-    options: {
-      data: {
-        name: userData.name,
-        role: userData.role,
+  try {
+    // Use Supabase Auth signUp which will automatically trigger our database trigger
+    const { data, error } = await supabase.auth.signUp({
+      email: userData.email,
+      password: userData.password,
+      options: {
+        data: {
+          name: userData.name,
+          role: userData.role,
+        },
       },
-    },
-  });
+    });
 
-  if (error) {
-    console.error('Registration error:', error);
-    throw new Error(error.message);
+    if (error) {
+      console.error('Registration error:', error);
+      throw new Error(error.message);
+    }
+
+    if (!data.user) {
+      throw new Error('Registration failed - no user returned');
+    }
+
+    console.log('User registered successfully:', data.user);
+
+    // Return the user data
+    return {
+      id: data.user.id,
+      name: userData.name,
+      email: userData.email,
+      role: userData.role,
+    };
+  } catch (error: any) {
+    console.error('Registration failed:', error);
+    throw new Error(error.message || 'Registration failed');
   }
-
-  if (!data.user) {
-    throw new Error('Registration failed - no user returned');
-  }
-
-  console.log('User registered successfully:', data.user);
-
-  return {
-    id: data.user.id,
-    name: userData.name,
-    email: userData.email,
-    role: userData.role,
-  };
 }
 
 export async function login(email: string, password: string): Promise<User> {
