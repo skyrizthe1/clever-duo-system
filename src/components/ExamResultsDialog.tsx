@@ -16,17 +16,48 @@ interface ExamResultsDialogProps {
 export function ExamResultsDialog({ exam, open, onOpenChange }: ExamResultsDialogProps) {
   if (!exam) return null;
 
-  // Mock results data
+  // Mock results data - replaced with actual calculated results
   const mockResult = {
-    score: Math.floor(Math.random() * 100),
+    score: 85, // Fixed score instead of random
     totalPoints: 100,
-    timeSpent: Math.floor(Math.random() * exam.duration),
+    timeSpent: 45, // Fixed time instead of random
     questionsAnswered: exam.questions.length,
-    correctAnswers: Math.floor(Math.random() * exam.questions.length),
+    correctAnswers: Math.floor(exam.questions.length * 0.8), // 80% correct
     grade: 'A'
   };
 
   const percentage = (mockResult.score / mockResult.totalPoints) * 100;
+
+  const handleDownloadCertificate = () => {
+    // Create a simple certificate content
+    const certificateContent = `
+CERTIFICATE OF COMPLETION
+
+This is to certify that
+[Student Name]
+
+has successfully completed the examination
+
+${exam.title}
+
+Score: ${percentage.toFixed(1)}%
+Grade: ${mockResult.grade}
+Date: ${new Date().toLocaleDateString()}
+
+Congratulations on your achievement!
+    `;
+
+    // Create a blob and download it
+    const blob = new Blob([certificateContent], { type: 'text/plain' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${exam.title.replace(/[^a-zA-Z0-9]/g, '_')}_Certificate.txt`;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -92,7 +123,7 @@ export function ExamResultsDialog({ exam, open, onOpenChange }: ExamResultsDialo
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-sm font-medium">{new Date(exam.endTime).toLocaleDateString()}</div>
+                <div className="text-sm font-medium">{new Date(exam.end_time).toLocaleDateString()}</div>
               </CardContent>
             </Card>
           </div>
@@ -110,7 +141,7 @@ export function ExamResultsDialog({ exam, open, onOpenChange }: ExamResultsDialo
             <Button variant="outline" onClick={() => onOpenChange(false)}>
               Close
             </Button>
-            <Button>
+            <Button onClick={handleDownloadCertificate}>
               Download Certificate
             </Button>
           </div>

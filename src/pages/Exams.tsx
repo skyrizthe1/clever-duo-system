@@ -1,318 +1,370 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Header } from '@/components/Header';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getExams, getCurrentUser, createExam, updateExam } from '@/services/api';
+import { getExams, getQuestions, createExam, updateExam, deleteExam, getCurrentUser } from '@/services/api';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Clock, Calendar, Users } from 'lucide-react';
-import { format } from 'date-fns';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { toast } from 'sonner';
+import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import { Calendar, Clock, Plus, Edit, Trash2, Users } from 'lucide-react';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
-  DialogFooter,
   DialogHeader,
-  DialogTitle
+  DialogTitle,
+  DialogFooter,
+  DialogDescription,
 } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+import { Checkbox } from '@/components/ui/checkbox';
+import { toast } from 'sonner';
 
 const Exams = () => {
-  const [filter, setFilter] = useState<'all' | 'published' | 'unpublished'>('all');
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const location = useLocation();
   const queryClient = useQueryClient();
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [newExam, setNewExam] = useState({
+  const [createOpen, setCreateOpen] = useState(false);
+  const [editingExam, setEditingExam] = useState(null);
+  const [formData, setFormData] = useState({
     title: '',
     description: '',
     duration: 60,
-    startTime: new Date().toISOString().slice(0, 16),
-    endTime: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().slice(0, 16),
+    start_time: '',
+    end_time: '',
+    questions: [],
+    published: false
   });
-  
-  const { data: exams = [] } = useQuery({
+
+  const { data: exams = [], isLoading: examsLoading, error: examsError } = useQuery({
     queryKey: ['exams'],
     queryFn: getExams
   });
-  
+
+  const { data: questions = [] } = useQuery({
+    queryKey: ['questions'],
+    queryFn: getQuestions
+  });
+
   const { data: currentUser } = useQuery({
     queryKey: ['currentUser'],
     queryFn: getCurrentUser
   });
 
-  const createExamMutation = useMutation({
+  const createMutation = useMutation({
     mutationFn: createExam,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['exams'] });
-      setIsDialogOpen(false);
-      setNewExam({
-        title: '',
-        description: '',
-        duration: 60,
-        startTime: new Date().toISOString().slice(0, 16),
-        endTime: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().slice(0, 16),
-      });
+      setCreateOpen(false);
+      resetForm();
+      toast.success('Exam created successfully');
     }
   });
 
-  const updateExamMutation = useMutation({
-    mutationFn: ({ id, updates }: { id: string; updates: any }) => updateExam(id, updates),
+  const updateMutation = useMutation({
+    mutationFn: ({ id, updates }) => updateExam(id, updates),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['exams'] });
+      setEditingExam(null);
+      resetForm();
+      toast.success('Exam updated successfully');
     }
   });
-  
-  const filteredExams = React.useMemo(() => {
-    if (filter === 'all') return exams;
-    if (filter === 'published') return exams.filter(exam => exam.published);
-    return exams.filter(exam => !exam.published);
-  }, [exams, filter]);
-  
-  const isTeacherOrAdmin = currentUser?.role === 'teacher' || currentUser?.role === 'admin';
-  
-  React.useEffect(() => {
-    const params = new URLSearchParams(location.search);
-    if (params.get('action') === 'create') {
-      setIsDialogOpen(true);
-    }
-  }, [location]);
-  
-  const handleCreateExam = () => {
-    setIsDialogOpen(true);
-    
-    if (location.search.includes('action=create')) {
-      navigate('/exams');
-    }
-  };
 
-  const handleExamSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!currentUser) {
-      toast.error("You must be logged in to create an exam");
-      return;
+  const deleteMutation = useMutation({
+    mutationFn: deleteExam,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['exams'] });
+      toast.success('Exam deleted successfully');
     }
+  });
 
-    createExamMutation.mutate({
-      title: newExam.title,
-      description: newExam.description,
-      duration: newExam.duration,
-      startTime: new Date(newExam.startTime),
-      endTime: new Date(newExam.endTime),
+  useEffect(() => {
+    if (searchParams.get('action') === 'create') {
+      setCreateOpen(true);
+    }
+  }, [searchParams]);
+
+  const resetForm = () => {
+    setFormData({
+      title: '',
+      description: '',
+      duration: 60,
+      start_time: '',
+      end_time: '',
       questions: [],
-      createdBy: currentUser.id,
       published: false
     });
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setNewExam(prev => ({
-      ...prev,
-      [name]: name === 'duration' ? parseInt(value) : value
-    }));
+  const handleSubmit = () => {
+    if (!formData.title || !formData.start_time || !formData.end_time) {
+      toast.error('Please fill in all required fields');
+      return;
+    }
+
+    const examData = {
+      ...formData,
+      start_time: new Date(formData.start_time),
+      end_time: new Date(formData.end_time),
+      created_by: currentUser?.id || 'unknown'
+    };
+
+    if (editingExam) {
+      updateMutation.mutate({ id: editingExam.id, updates: examData });
+    } else {
+      createMutation.mutate(examData);
+    }
   };
 
-  const handleTogglePublish = (examId: string, currentPublished: boolean) => {
-    updateExamMutation.mutate({
-      id: examId,
-      updates: { published: !currentPublished }
+  const handleEdit = (exam) => {
+    setEditingExam(exam);
+    setFormData({
+      title: exam.title,
+      description: exam.description || '',
+      duration: exam.duration,
+      start_time: new Date(exam.start_time).toISOString().slice(0, 16),
+      end_time: new Date(exam.end_time).toISOString().slice(0, 16),
+      questions: exam.questions || [],
+      published: exam.published || false
     });
   };
-  
+
+  const handleQuestionToggle = (questionId, checked) => {
+    if (checked) {
+      setFormData(prev => ({
+        ...prev,
+        questions: [...prev.questions, questionId]
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        questions: prev.questions.filter(id => id !== questionId)
+      }));
+    }
+  };
+
+  const handleDelete = (examId) => {
+    if (window.confirm('Are you sure you want to delete this exam?')) {
+      deleteMutation.mutate(examId);
+    }
+  };
+
+  if (examsLoading) {
+    return (
+      <div className="min-h-screen flex flex-col bg-background">
+        <Header />
+        <main className="flex-1 container mx-auto px-4 py-6">
+          <div className="text-center py-12">
+            <p>Loading exams...</p>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  if (examsError) {
+    return (
+      <div className="min-h-screen flex flex-col bg-background">
+        <Header />
+        <main className="flex-1 container mx-auto px-4 py-6">
+          <div className="text-center py-12">
+            <p className="text-red-600">Error loading exams: {examsError.message}</p>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-br from-blue-50 to-indigo-100">
+    <div className="min-h-screen flex flex-col bg-background">
       <Header />
       <main className="flex-1 container mx-auto px-4 py-6">
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">Exams</h1>
-          {isTeacherOrAdmin && (
-            <Button 
-              onClick={handleCreateExam}
-              className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all duration-300"
-            >
-              Create New Exam
-            </Button>
-          )}
+          <h1 className="text-2xl font-bold">Exam Management</h1>
+          <Button onClick={() => setCreateOpen(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Create Exam
+          </Button>
         </div>
-        
-        {isTeacherOrAdmin && (
-          <div className="flex gap-2 mb-6">
-            <Button 
-              variant={filter === 'all' ? 'default' : 'outline'} 
-              onClick={() => setFilter('all')}
-              className="transition-all duration-200 hover:scale-105"
-            >
-              All
-            </Button>
-            <Button 
-              variant={filter === 'published' ? 'default' : 'outline'} 
-              onClick={() => setFilter('published')}
-              className="transition-all duration-200 hover:scale-105"
-            >
-              Published
-            </Button>
-            <Button 
-              variant={filter === 'unpublished' ? 'default' : 'outline'} 
-              onClick={() => setFilter('unpublished')}
-              className="transition-all duration-200 hover:scale-105"
-            >
-              Unpublished
-            </Button>
-          </div>
-        )}
-        
-        {filteredExams.length > 0 ? (
+
+        {exams.length > 0 ? (
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {filteredExams.map(exam => (
-              <Card key={exam.id} className="hover:shadow-xl transition-all duration-300 hover:scale-105 bg-white/80 backdrop-blur-sm border-0 shadow-lg">
-                <CardHeader className="bg-gradient-to-r from-blue-500/10 to-purple-500/10">
-                  <CardTitle className="text-gray-800">{exam.title}</CardTitle>
+            {exams.map((exam) => (
+              <Card key={exam.id}>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-lg">{exam.title}</CardTitle>
+                    <Badge variant={exam.published ? 'default' : 'secondary'}>
+                      {exam.published ? 'Published' : 'Draft'}
+                    </Badge>
+                  </div>
                 </CardHeader>
-                <CardContent className="pt-4">
-                  <p className="text-sm text-muted-foreground mb-4">{exam.description}</p>
-                  <div className="space-y-3">
-                    <div className="flex items-center text-sm">
-                      <Clock className="h-4 w-4 mr-2 text-blue-500" />
+                <CardContent>
+                  <p className="text-muted-foreground mb-4">{exam.description}</p>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex items-center gap-2">
+                      <Calendar className="h-4 w-4" />
+                      <span>Start: {new Date(exam.start_time).toLocaleString()}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Calendar className="h-4 w-4" />
+                      <span>End: {new Date(exam.end_time).toLocaleString()}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Clock className="h-4 w-4" />
                       <span>Duration: {exam.duration} minutes</span>
                     </div>
-                    <div className="flex items-center text-sm">
-                      <Calendar className="h-4 w-4 mr-2 text-green-500" />
-                      <span>Start: {format(new Date(exam.startTime), 'MMM d, yyyy h:mm a')}</span>
-                    </div>
-                    <div className="flex items-center text-sm">
-                      <Users className="h-4 w-4 mr-2 text-purple-500" />
-                      <span>Questions: {exam.questions.length}</span>
+                    <div className="flex items-center gap-2">
+                      <Users className="h-4 w-4" />
+                      <span>Questions: {exam.questions?.length || 0}</span>
                     </div>
                   </div>
                 </CardContent>
-                <CardFooter className="flex justify-between">
-                  <Button variant="outline" className="hover:bg-blue-50 transition-colors">View Details</Button>
-                  {isTeacherOrAdmin && (
-                    exam.published 
-                      ? <Button 
-                          variant="secondary" 
-                          className="hover:bg-gray-200 transition-colors"
-                          onClick={() => handleTogglePublish(exam.id, exam.published)}
-                          disabled={updateExamMutation.isPending}
-                        >
-                          {updateExamMutation.isPending ? 'Updating...' : 'Unpublish'}
-                        </Button>
-                      : <Button 
-                          className="bg-gradient-to-r from-green-500 to-blue-500 hover:from-green-600 hover:to-blue-600 text-white"
-                          onClick={() => handleTogglePublish(exam.id, exam.published)}
-                          disabled={updateExamMutation.isPending}
-                        >
-                          {updateExamMutation.isPending ? 'Publishing...' : 'Publish'}
-                        </Button>
-                  )}
+                <CardFooter className="flex gap-2">
+                  <Button variant="outline" size="sm" onClick={() => handleEdit(exam)}>
+                    <Edit className="h-4 w-4 mr-1" />
+                    Edit
+                  </Button>
+                  <Button 
+                    variant="destructive" 
+                    size="sm" 
+                    onClick={() => handleDelete(exam.id)}
+                    disabled={deleteMutation.isPending}
+                  >
+                    <Trash2 className="h-4 w-4 mr-1" />
+                    Delete
+                  </Button>
                 </CardFooter>
               </Card>
             ))}
           </div>
         ) : (
-          <div className="text-center py-12 bg-white/60 backdrop-blur-sm rounded-xl shadow-lg">
-            <h3 className="text-lg font-medium text-gray-600">No exams found</h3>
-            <p className="text-gray-500 mt-1">
-              {isTeacherOrAdmin 
-                ? "Click the 'Create New Exam' button to create your first exam"
-                : "No exams are currently available"
-              }
-            </p>
+          <div className="text-center py-12 bg-gray-50 rounded-lg">
+            <h3 className="text-lg font-medium text-gray-600">No exams created yet</h3>
+            <p className="text-gray-500 mt-1">Create your first exam to get started</p>
+            <Button className="mt-4" onClick={() => setCreateOpen(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              Create Exam
+            </Button>
           </div>
         )}
 
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogContent className="sm:max-w-[600px] bg-white/95 backdrop-blur-sm">
+        <Dialog open={createOpen || !!editingExam} onOpenChange={(open) => {
+          if (!open) {
+            setCreateOpen(false);
+            setEditingExam(null);
+            resetForm();
+          }
+        }}>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
             <DialogHeader>
-              <DialogTitle className="text-xl bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">Create New Exam</DialogTitle>
+              <DialogTitle>{editingExam ? 'Edit Exam' : 'Create New Exam'}</DialogTitle>
               <DialogDescription>
-                Fill out the form below to create a new exam. You can add questions after creating the exam.
+                {editingExam ? 'Update exam details and settings' : 'Set up a new examination with questions and schedule'}
               </DialogDescription>
             </DialogHeader>
-            <form onSubmit={handleExamSubmit}>
-              <div className="grid gap-4 py-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="title">Exam Title</Label>
+
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="title">Title *</Label>
+                <Input
+                  id="title"
+                  value={formData.title}
+                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                  placeholder="Enter exam title"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="description">Description</Label>
+                <Textarea
+                  id="description"
+                  value={formData.description}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  placeholder="Enter exam description"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <Label htmlFor="duration">Duration (minutes) *</Label>
                   <Input
-                    id="title"
-                    name="title"
-                    value={newExam.title}
-                    onChange={handleInputChange}
-                    placeholder="Mid-term Exam"
-                    required
-                    className="focus:ring-2 focus:ring-blue-500"
+                    id="duration"
+                    type="number"
+                    value={formData.duration}
+                    onChange={(e) => setFormData({ ...formData, duration: parseInt(e.target.value) || 60 })}
                   />
                 </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="description">Description</Label>
-                  <Textarea
-                    id="description"
-                    name="description"
-                    value={newExam.description}
-                    onChange={handleInputChange}
-                    placeholder="Describe the exam content and instructions"
-                    className="focus:ring-2 focus:ring-blue-500"
+
+                <div>
+                  <Label htmlFor="start_time">Start Time *</Label>
+                  <Input
+                    id="start_time"
+                    type="datetime-local"
+                    value={formData.start_time}
+                    onChange={(e) => setFormData({ ...formData, start_time: e.target.value })}
                   />
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="grid gap-2">
-                    <Label htmlFor="duration">Duration (minutes)</Label>
-                    <Input
-                      id="duration"
-                      name="duration"
-                      type="number"
-                      min="1"
-                      value={newExam.duration}
-                      onChange={handleInputChange}
-                      required
-                      className="focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="startTime">Start Time</Label>
-                    <Input
-                      id="startTime"
-                      name="startTime"
-                      type="datetime-local"
-                      value={newExam.startTime}
-                      onChange={handleInputChange}
-                      required
-                      className="focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="endTime">End Time</Label>
-                    <Input
-                      id="endTime"
-                      name="endTime"
-                      type="datetime-local"
-                      value={newExam.endTime}
-                      onChange={handleInputChange}
-                      required
-                      className="focus:ring-2 focus:ring-blue-500"
-                    />
-                  </div>
+
+                <div>
+                  <Label htmlFor="end_time">End Time *</Label>
+                  <Input
+                    id="end_time"
+                    type="datetime-local"
+                    value={formData.end_time}
+                    onChange={(e) => setFormData({ ...formData, end_time: e.target.value })}
+                  />
                 </div>
               </div>
-              <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
-                  Cancel
-                </Button>
-                <Button 
-                  type="submit" 
-                  disabled={createExamMutation.isPending}
-                  className="bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700"
-                >
-                  {createExamMutation.isPending ? 'Creating...' : 'Create Exam'}
-                </Button>
-              </DialogFooter>
-            </form>
+
+              <div>
+                <Label>Questions</Label>
+                <div className="max-h-40 overflow-y-auto border rounded-md p-2 space-y-2">
+                  {questions.length > 0 ? questions.map((question) => (
+                    <div key={question.id} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={question.id}
+                        checked={formData.questions.includes(question.id)}
+                        onCheckedChange={(checked) => handleQuestionToggle(question.id, checked)}
+                      />
+                      <Label htmlFor={question.id} className="text-sm flex-1">
+                        {question.content} ({question.points} pts)
+                      </Label>
+                    </div>
+                  )) : (
+                    <p className="text-muted-foreground text-sm">No questions available. Create questions first.</p>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="published"
+                  checked={formData.published}
+                  onCheckedChange={(checked) => setFormData({ ...formData, published: checked })}
+                />
+                <Label htmlFor="published">Publish exam (make visible to students)</Label>
+              </div>
+            </div>
+
+            <DialogFooter>
+              <Button variant="outline" onClick={() => {
+                setCreateOpen(false);
+                setEditingExam(null);
+                resetForm();
+              }}>
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleSubmit}
+                disabled={createMutation.isPending || updateMutation.isPending}
+              >
+                {(createMutation.isPending || updateMutation.isPending) ? 'Saving...' : (editingExam ? 'Update' : 'Create')}
+              </Button>
+            </DialogFooter>
           </DialogContent>
         </Dialog>
       </main>

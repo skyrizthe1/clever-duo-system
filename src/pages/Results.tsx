@@ -40,7 +40,7 @@ const Results = () => {
   
   // Filter to only get completed exams with submissions
   const completedExamsWithResults = submissions.map(submission => {
-    const exam = exams.find(e => e.id === submission.examId);
+    const exam = exams.find(e => e.id === submission.exam_id);
     return exam ? {
       ...exam,
       submission: submission,
@@ -106,7 +106,7 @@ const Results = () => {
                     {completedExamsWithResults.map((result) => (
                       <TableRow key={result.id}>
                         <TableCell className="font-medium">{result.title}</TableCell>
-                        <TableCell>{new Date(result.submission.submittedAt).toLocaleDateString()}</TableCell>
+                        <TableCell>{new Date(result.submission.submitted_at).toLocaleDateString()}</TableCell>
                         <TableCell>
                           {result.status === 'graded' ? 
                             `${result.score}/100` : 

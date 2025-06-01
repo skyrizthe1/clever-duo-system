@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Header } from '@/components/Header';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -65,39 +66,9 @@ const Grading = () => {
     exam.published && new Date(exam.end_time) < now
   );
   
-  // Get real submissions from the API instead of mock data
+  // Get real submissions from the API
   const realSubmissions = submissions.filter(sub => 
     completedExams.some(exam => exam.id === sub.exam_id)
-  );
-  
-  // Mock students for demonstration
-  const mockStudents = [
-    { id: 's1', name: 'Alex Johnson' },
-    { id: 's2', name: 'Jamie Smith' },
-    { id: 's3', name: 'Taylor Wilson' },
-    { id: 's4', name: 'Casey Brown' },
-    { id: 's5', name: 'Jordan Lee' },
-  ];
-  
-  // Create mock submissions with proper tracking
-  const mockSubmissions = completedExams.flatMap(exam => 
-    mockStudents.map(student => {
-      const existingSubmission = submissions.find(s => s.examId === exam.id && s.studentId === student.id);
-      
-      return existingSubmission || {
-        id: `${exam.id}-${student.id}`,
-        examId: exam.id,
-        examTitle: exam.title,
-        studentId: student.id,
-        studentName: student.name,
-        submittedAt: new Date(exam.endTime),
-        graded: false,
-        answers: exam.questions.reduce((acc, qId) => ({
-          ...acc,
-          [qId]: Math.random() > 0.7 ? 'A' : Math.random() > 0.5 ? 'B' : Math.random() > 0.3 ? 'C' : 'D'
-        }), {})
-      };
-    })
   );
   
   const handleOpenGrading = (submission: any) => {
@@ -107,7 +78,7 @@ const Grading = () => {
     const initialPoints: Record<string, string> = {};
     const initialFeedback: Record<string, string> = {};
     
-    const exam = exams.find(e => e.id === submission.examId);
+    const exam = exams.find(e => e.id === submission.exam_id);
     if (exam) {
       exam.questions.forEach(questionId => {
         initialPoints[questionId] = submission.graded && submission.feedback ? 
@@ -182,9 +153,9 @@ const Grading = () => {
                 <TableBody>
                   {filteredSubmissions.map((sub) => (
                     <TableRow key={sub.id}>
-                      <TableCell className="font-medium">{sub.student_name}</TableCell>
-                      <TableCell>{sub.exam_title}</TableCell>
-                      <TableCell>{sub.submitted_at.toLocaleDateString()}</TableCell>
+                      <TableCell className="font-medium">{sub.student_name || 'Unknown Student'}</TableCell>
+                      <TableCell>{exams.find(e => e.id === sub.exam_id)?.title || 'Unknown Exam'}</TableCell>
+                      <TableCell>{new Date(sub.submitted_at).toLocaleDateString()}</TableCell>
                       <TableCell>
                         <Badge variant="outline" className={
                           sub.graded 
@@ -213,7 +184,10 @@ const Grading = () => {
           <div className="text-center py-12 bg-gray-50 rounded-lg">
             <h3 className="text-lg font-medium text-gray-600">No submissions to grade</h3>
             <p className="text-gray-500 mt-1">
-              There are no exam submissions awaiting grading at this time
+              {realSubmissions.length === 0 
+                ? "There are no exam submissions yet. Students need to complete exams first."
+                : "All submissions for the selected exam have been processed."
+              }
             </p>
           </div>
         )}
@@ -222,7 +196,7 @@ const Grading = () => {
           <DialogContent className="max-w-3xl">
             <DialogHeader>
               <DialogTitle>
-                {selectedSubmission?.exam_title} - {selectedSubmission?.student_name}
+                {exams.find(e => e.id === selectedSubmission?.exam_id)?.title} - {selectedSubmission?.student_name}
               </DialogTitle>
               <DialogDescription>
                 Grade this student's exam submission

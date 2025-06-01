@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -79,16 +80,17 @@ export function ExamTaking({ exam, questions, open, onOpenChange, onSubmit }: Ex
     
     try {
       await submitExam({
-        examId: exam.id,
-        examTitle: exam.title,
+        exam_id: exam.id,
+        exam_title: exam.title,
         answers: answers,
-        submittedAt: new Date(),
-        timeSpent: exam.duration * 60 - timeLeft
+        submitted_at: new Date(),
+        time_spent: exam.duration * 60 - timeLeft
       });
       
       // Invalidate queries to refresh data
       await queryClient.invalidateQueries({ queryKey: ['submissions'] });
       await queryClient.invalidateQueries({ queryKey: ['exams'] });
+      await queryClient.invalidateQueries({ queryKey: ['examSubmissions'] });
       
       onOpenChange(false);
       setExamStarted(false);
