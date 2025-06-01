@@ -60,18 +60,20 @@ const Grading = () => {
     }
   });
   
-  // Filter to get exams that need grading (completed exams)
-  const now = new Date();
-  const completedExams = exams.filter(exam => 
-    exam.published && new Date(exam.end_time) < now
-  );
+  console.log('All submissions:', submissions);
+  console.log('Available exams:', exams);
   
-  // Get real submissions from the API
-  const realSubmissions = submissions.filter(sub => 
-    completedExams.some(exam => exam.id === sub.exam_id)
-  );
+  // Get submissions that match available exams
+  const validSubmissions = submissions.filter(sub => {
+    const examExists = exams.some(exam => exam.id === sub.exam_id);
+    console.log(`Submission ${sub.id} for exam ${sub.exam_id}: exam exists = ${examExists}`);
+    return examExists;
+  });
+  
+  console.log('Valid submissions:', validSubmissions);
   
   const handleOpenGrading = (submission: any) => {
+    console.log('Opening grading for submission:', submission);
     setSelectedSubmission(submission);
     
     // Initialize points and feedback for each question
@@ -106,8 +108,10 @@ const Grading = () => {
   };
   
   const filteredSubmissions = selectedExam 
-    ? realSubmissions.filter(sub => sub.exam_id === selectedExam)
-    : realSubmissions;
+    ? validSubmissions.filter(sub => sub.exam_id === selectedExam)
+    : validSubmissions;
+  
+  console.log('Filtered submissions to display:', filteredSubmissions);
   
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -120,18 +124,21 @@ const Grading = () => {
             variant={selectedExam === null ? 'default' : 'outline'} 
             onClick={() => setSelectedExam(null)}
           >
-            All Exams
+            All Exams ({validSubmissions.length})
           </Button>
           
-          {completedExams.map(exam => (
-            <Button 
-              key={exam.id} 
-              variant={selectedExam === exam.id ? 'default' : 'outline'} 
-              onClick={() => setSelectedExam(exam.id)}
-            >
-              {exam.title}
-            </Button>
-          ))}
+          {exams.map(exam => {
+            const examSubmissionCount = validSubmissions.filter(sub => sub.exam_id === exam.id).length;
+            return (
+              <Button 
+                key={exam.id} 
+                variant={selectedExam === exam.id ? 'default' : 'outline'} 
+                onClick={() => setSelectedExam(exam.id)}
+              >
+                {exam.title} ({examSubmissionCount})
+              </Button>
+            );
+          })}
         </div>
         
         {filteredSubmissions.length > 0 ? (
@@ -151,31 +158,34 @@ const Grading = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredSubmissions.map((sub) => (
-                    <TableRow key={sub.id}>
-                      <TableCell className="font-medium">{sub.student_name || 'Unknown Student'}</TableCell>
-                      <TableCell>{exams.find(e => e.id === sub.exam_id)?.title || 'Unknown Exam'}</TableCell>
-                      <TableCell>{new Date(sub.submitted_at).toLocaleDateString()}</TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className={
-                          sub.graded 
-                            ? 'bg-green-100 text-green-800' 
-                            : 'bg-yellow-100 text-yellow-800'
-                        }>
-                          {sub.graded ? 'Graded' : 'Pending'}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          onClick={() => handleOpenGrading(sub)}
-                        >
-                          {sub.graded ? 'Review Grades' : 'Grade'}
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                  {filteredSubmissions.map((sub) => {
+                    const exam = exams.find(e => e.id === sub.exam_id);
+                    return (
+                      <TableRow key={sub.id}>
+                        <TableCell className="font-medium">{sub.student_name || 'Unknown Student'}</TableCell>
+                        <TableCell>{exam?.title || 'Unknown Exam'}</TableCell>
+                        <TableCell>{new Date(sub.submitted_at).toLocaleDateString()}</TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className={
+                            sub.graded 
+                              ? 'bg-green-100 text-green-800' 
+                              : 'bg-yellow-100 text-yellow-800'
+                          }>
+                            {sub.graded ? `Graded (${sub.score || 0} pts)` : 'Pending'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            onClick={() => handleOpenGrading(sub)}
+                          >
+                            {sub.graded ? 'Review Grades' : 'Grade'}
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
             </CardContent>
@@ -184,10 +194,13 @@ const Grading = () => {
           <div className="text-center py-12 bg-gray-50 rounded-lg">
             <h3 className="text-lg font-medium text-gray-600">No submissions to grade</h3>
             <p className="text-gray-500 mt-1">
-              {realSubmissions.length === 0 
+              {validSubmissions.length === 0 
                 ? "There are no exam submissions yet. Students need to complete exams first."
                 : "All submissions for the selected exam have been processed."
               }
+            </p>
+            <p className="text-gray-500 text-sm mt-2">
+              Total submissions in system: {submissions.length} | Valid submissions: {validSubmissions.length}
             </p>
           </div>
         )}
@@ -217,7 +230,7 @@ const Grading = () => {
                       
                       <div className="mb-4 p-3 bg-gray-50 rounded-md">
                         <h4 className="text-sm font-medium mb-1">Student Answer:</h4>
-                        <p>{studentAnswer}</p>
+                        <p>{Array.isArray(studentAnswer) ? studentAnswer.join(', ') : studentAnswer}</p>
                       </div>
                       
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -227,6 +240,8 @@ const Grading = () => {
                           </label>
                           <Input 
                             id={`points-${questionId}`}
+                            type="number"
+                            min="0"
                             value={points[questionId] || ''}
                             onChange={(e) => setPoints({...points, [questionId]: e.target.value})}
                             placeholder="Enter points"
@@ -242,6 +257,7 @@ const Grading = () => {
                             value={feedback[questionId] || ''}
                             onChange={(e) => setFeedback({...feedback, [questionId]: e.target.value})}
                             placeholder="Enter feedback for student"
+                            rows={2}
                           />
                         </div>
                       </div>

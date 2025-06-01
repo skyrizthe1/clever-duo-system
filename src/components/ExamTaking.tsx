@@ -10,10 +10,10 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
 import { AlertTriangle, Clock, Shield } from 'lucide-react';
-import { Exam, Question, submitExam } from '@/services/api';
+import { Exam, Question, submitExam, getCurrentUser } from '@/services/api';
 import { useAntiCheating } from '@/hooks/useAntiCheating';
 import { toast } from 'sonner';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQueryClient, useQuery } from '@tanstack/react-query';
 
 interface ExamTakingProps {
   exam: Exam | null;
@@ -30,6 +30,11 @@ export function ExamTaking({ exam, questions, open, onOpenChange, onSubmit }: Ex
   const [examStarted, setExamStarted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const queryClient = useQueryClient();
+  
+  const { data: currentUser } = useQuery({
+    queryKey: ['currentUser'],
+    queryFn: getCurrentUser
+  });
   
   const { violations, isTabActive } = useAntiCheating({
     isExamActive: open && examStarted,
@@ -72,7 +77,7 @@ export function ExamTaking({ exam, questions, open, onOpenChange, onSubmit }: Ex
   };
 
   const handleSubmit = async () => {
-    if (!examStarted || isSubmitting) {
+    if (!examStarted || isSubmitting || !currentUser) {
       return;
     }
     
@@ -82,6 +87,8 @@ export function ExamTaking({ exam, questions, open, onOpenChange, onSubmit }: Ex
       await submitExam({
         exam_id: exam.id,
         exam_title: exam.title,
+        student_id: currentUser.id,
+        student_name: currentUser.name,
         answers: answers,
         submitted_at: new Date(),
         time_spent: exam.duration * 60 - timeLeft
@@ -109,7 +116,8 @@ export function ExamTaking({ exam, questions, open, onOpenChange, onSubmit }: Ex
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const progress = ((currentQuestion + 1) / examQuestions.length) * 100;
+  // Fix the progress calculation to start at 0%
+  const progress = examQuestions.length > 0 ? (currentQuestion / examQuestions.length) * 100 : 0;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
