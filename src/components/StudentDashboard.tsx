@@ -32,28 +32,28 @@ export function StudentDashboard() {
   
   const publishedExams = exams.filter(exam => exam.published);
   const sortedExams = [...publishedExams].sort(
-    (a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime()
+    (a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime()
   );
   
   const now = new Date();
   
   // Check if exam has been submitted by current user
   const hasSubmission = (examId: string) => {
-    return submissions.some(sub => sub.examId === examId);
+    return submissions.some(sub => sub.exam_id === examId);
   };
   
   const upcomingExams = sortedExams.filter(
-    exam => new Date(exam.startTime) > now && !hasSubmission(exam.id)
+    exam => new Date(exam.start_time) > now && !hasSubmission(exam.id)
   );
   
   const ongoingExams = sortedExams.filter(
-    exam => new Date(exam.startTime) <= now && 
-           new Date(exam.endTime) >= now && 
+    exam => new Date(exam.start_time) <= now && 
+           new Date(exam.end_time) >= now && 
            !hasSubmission(exam.id)
   );
   
   const pastExams = sortedExams.filter(
-    exam => (new Date(exam.endTime) < now || hasSubmission(exam.id))
+    exam => (new Date(exam.end_time) < now || hasSubmission(exam.id))
   );
 
   const handleStartExam = (exam) => {
@@ -135,7 +135,7 @@ export function StudentDashboard() {
                       <div>
                         <p className="text-xs text-green-600 font-medium">Time Remaining</p>
                         <p className="font-bold text-green-800">
-                          {Math.floor((new Date(exam.endTime).getTime() - now.getTime()) / (1000 * 60))} minutes
+                          {Math.floor((new Date(exam.end_time).getTime() - now.getTime()) / (1000 * 60))} minutes
                         </p>
                       </div>
                     </div>
@@ -183,7 +183,7 @@ export function StudentDashboard() {
                       <Calendar className="h-4 w-4 text-blue-500" />
                       <div>
                         <p className="text-xs text-gray-500 font-medium">Starts</p>
-                        <p className="text-gray-700 font-medium">{new Date(exam.startTime).toLocaleString()}</p>
+                        <p className="text-gray-700 font-medium">{new Date(exam.start_time).toLocaleString()}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
@@ -230,7 +230,7 @@ export function StudentDashboard() {
                       <Calendar className="h-4 w-4 text-gray-500" />
                       <div>
                         <p className="text-xs text-gray-500 font-medium">Date</p>
-                        <p className="text-gray-600">{new Date(exam.startTime).toLocaleDateString()}</p>
+                        <p className="text-gray-600">{new Date(exam.start_time).toLocaleDateString()}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">

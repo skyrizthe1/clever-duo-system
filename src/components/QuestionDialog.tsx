@@ -12,10 +12,9 @@ import { Badge } from '@/components/ui/badge';
 
 type QuestionDialogProps = {
   question: Question;
-  onClose: () => void;
 };
 
-export function QuestionDialog({ question, onClose }: QuestionDialogProps) {
+export function QuestionDialog({ question }: QuestionDialogProps) {
   return (
     <DialogContent className="sm:max-w-[550px]">
       <DialogHeader>
@@ -79,7 +78,7 @@ export function QuestionDialog({ question, onClose }: QuestionDialogProps) {
       </div>
 
       <DialogFooter>
-        <Button onClick={onClose}>Close</Button>
+        <Button onClick={() => {}}>Close</Button>
       </DialogFooter>
     </DialogContent>
   );

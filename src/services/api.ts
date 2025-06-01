@@ -1,4 +1,3 @@
-
 // Mock API service that simulates backend functionality
 import { toast } from "sonner";
 
@@ -50,24 +49,24 @@ export interface Exam {
   title: string;
   description: string;
   duration: number; // minutes
-  startTime: Date;
-  endTime: Date;
+  start_time: Date;
+  end_time: Date;
   questions: string[]; // Question IDs
-  createdBy: string;
+  created_by: string;
   published: boolean;
 }
 
 export interface ExamSubmission {
   id: string;
-  examId: string;
-  examTitle: string;
-  studentId: string;
-  studentName: string;
-  submittedAt: Date;
+  exam_id: string;
+  exam_title: string;
+  student_id: string;
+  student_name: string;
+  submitted_at: Date;
   graded: boolean;
   score?: number;
   answers: Record<string, any>;
-  timeSpent: number;
+  time_spent: number;
 }
 
 // Mock backend data
@@ -190,10 +189,10 @@ let exams: Exam[] = [
     title: "General Knowledge Quiz",
     description: "A comprehensive quiz covering various topics including geography, science, and mathematics.",
     duration: 60,
-    startTime: new Date(Date.now() - 30 * 60 * 1000), // Started 30 minutes ago
-    endTime: new Date(Date.now() + 30 * 60 * 1000), // Ends in 30 minutes
+    start_time: new Date(Date.now() - 30 * 60 * 1000), // Started 30 minutes ago
+    end_time: new Date(Date.now() + 30 * 60 * 1000), // Ends in 30 minutes
     questions: ["q1", "q2", "q4"],
-    createdBy: "2",
+    created_by: "2",
     published: true
   },
   {
@@ -201,10 +200,10 @@ let exams: Exam[] = [
     title: "Science Fundamentals",
     description: "Test your knowledge of basic scientific concepts in biology and astronomy.",
     duration: 45,
-    startTime: new Date(Date.now() + 2 * 60 * 60 * 1000), // Starts in 2 hours
-    endTime: new Date(Date.now() + 3 * 60 * 60 * 1000), // Ends in 3 hours
+    start_time: new Date(Date.now() + 2 * 60 * 60 * 1000), // Starts in 2 hours
+    end_time: new Date(Date.now() + 3 * 60 * 60 * 1000), // Ends in 3 hours
     questions: ["q3", "q5"],
-    createdBy: "2",
+    created_by: "2",
     published: true
   },
   {
@@ -212,10 +211,10 @@ let exams: Exam[] = [
     title: "Programming Basics",
     description: "An assessment of fundamental programming concepts and languages.",
     duration: 90,
-    startTime: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000), // Started 2 days ago
-    endTime: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000 + 90 * 60 * 1000), // Ended 2 days ago
+    start_time: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000), // Started 2 days ago
+    end_time: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000 + 90 * 60 * 1000), // Ended 2 days ago
     questions: ["q2"],
-    createdBy: "2", 
+    created_by: "2", 
     published: true
   }
 ];
@@ -491,16 +490,16 @@ export async function submitExam(submission: Omit<ExamSubmission, "id" | "graded
     throw new Error("Unauthorized access");
   }
   
-  const exam = exams.find(e => e.id === submission.examId);
+  const exam = exams.find(e => e.id === submission.exam_id);
   
   const newSubmission: ExamSubmission = {
     ...submission,
     id: Math.random().toString(36).substr(2, 9),
     graded: false,
-    submittedAt: new Date(submission.submittedAt),
-    studentId: currentUser.id,
-    studentName: currentUser.name,
-    examTitle: exam?.title || 'Unknown Exam'
+    submitted_at: new Date(submission.submitted_at),
+    student_id: currentUser.id,
+    student_name: currentUser.name,
+    exam_title: exam?.title || 'Unknown Exam'
   };
   
   examSubmissions = [...examSubmissions, newSubmission];
@@ -517,7 +516,7 @@ export async function getExamSubmissions(): Promise<ExamSubmission[]> {
   
   // Students can only see their own submissions
   if (currentUser.role === 'student') {
-    return examSubmissions.filter(sub => sub.studentId === currentUser.id);
+    return examSubmissions.filter(sub => sub.student_id === currentUser.id);
   }
   
   // Teachers and admins can see all submissions

@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Header } from '@/components/Header';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -63,7 +62,12 @@ const Grading = () => {
   // Filter to get exams that need grading (completed exams)
   const now = new Date();
   const completedExams = exams.filter(exam => 
-    exam.published && new Date(exam.endTime) < now
+    exam.published && new Date(exam.end_time) < now
+  );
+  
+  // Get real submissions from the API instead of mock data
+  const realSubmissions = submissions.filter(sub => 
+    completedExams.some(exam => exam.id === sub.exam_id)
   );
   
   // Mock students for demonstration
@@ -131,8 +135,8 @@ const Grading = () => {
   };
   
   const filteredSubmissions = selectedExam 
-    ? mockSubmissions.filter(sub => sub.examId === selectedExam)
-    : mockSubmissions;
+    ? realSubmissions.filter(sub => sub.exam_id === selectedExam)
+    : realSubmissions;
   
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -178,9 +182,9 @@ const Grading = () => {
                 <TableBody>
                   {filteredSubmissions.map((sub) => (
                     <TableRow key={sub.id}>
-                      <TableCell className="font-medium">{sub.studentName}</TableCell>
-                      <TableCell>{sub.examTitle}</TableCell>
-                      <TableCell>{sub.submittedAt.toLocaleDateString()}</TableCell>
+                      <TableCell className="font-medium">{sub.student_name}</TableCell>
+                      <TableCell>{sub.exam_title}</TableCell>
+                      <TableCell>{sub.submitted_at.toLocaleDateString()}</TableCell>
                       <TableCell>
                         <Badge variant="outline" className={
                           sub.graded 
@@ -218,7 +222,7 @@ const Grading = () => {
           <DialogContent className="max-w-3xl">
             <DialogHeader>
               <DialogTitle>
-                {selectedSubmission?.examTitle} - {selectedSubmission?.studentName}
+                {selectedSubmission?.exam_title} - {selectedSubmission?.student_name}
               </DialogTitle>
               <DialogDescription>
                 Grade this student's exam submission
@@ -226,7 +230,7 @@ const Grading = () => {
             </DialogHeader>
             
             <div className="space-y-4 max-h-[60vh] overflow-y-auto py-2">
-              {selectedSubmission && exams.find(e => e.id === selectedSubmission.examId)?.questions.map((questionId, index) => {
+              {selectedSubmission && exams.find(e => e.id === selectedSubmission.exam_id)?.questions.map((questionId, index) => {
                 const studentAnswer = selectedSubmission.answers[questionId] || 'No answer';
                 
                 return (

@@ -41,29 +41,29 @@ const MyExams = () => {
   
   // Sort exams by start time
   const sortedExams = [...publishedExams].sort(
-    (a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime()
+    (a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime()
   );
   
   const now = new Date();
   
   // Check if exam has been submitted by current user
   const hasSubmission = (examId: string) => {
-    return submissions.some(sub => sub.examId === examId);
+    return submissions.some(sub => sub.exam_id === examId);
   };
   
   // Categorize exams
   const upcomingExams = sortedExams.filter(
-    exam => new Date(exam.startTime) > now && !hasSubmission(exam.id)
+    exam => new Date(exam.start_time) > now && !hasSubmission(exam.id)
   );
   
   const ongoingExams = sortedExams.filter(
-    exam => new Date(exam.startTime) <= now && 
-           new Date(exam.endTime) >= now && 
+    exam => new Date(exam.start_time) <= now && 
+           new Date(exam.end_time) >= now && 
            !hasSubmission(exam.id)
   );
   
   const pastExams = sortedExams.filter(
-    exam => (new Date(exam.endTime) < now || hasSubmission(exam.id))
+    exam => (new Date(exam.end_time) < now || hasSubmission(exam.id))
   );
 
   const handleStartExam = (exam) => {
@@ -83,7 +83,19 @@ const MyExams = () => {
 
   const handleExamSubmit = (submissionData) => {
     console.log('Exam submitted:', submissionData);
-    // Here you would typically send the submission to the backend
+    // Submit the exam
+    const submission = {
+      exam_id: selectedExam.id,
+      exam_title: selectedExam.title,
+      student_id: currentUser?.id || 'student-1',
+      student_name: currentUser?.name || 'Student',
+      submitted_at: new Date(),
+      answers: submissionData.answers,
+      time_spent: submissionData.timeSpent || 0
+    };
+    
+    // In a real app, this would be an API call
+    console.log('Submitting exam:', submission);
   };
   
   return (
@@ -110,7 +122,7 @@ const MyExams = () => {
                       <div>
                         <p className="text-xs text-muted-foreground">Time Remaining</p>
                         <p className="font-medium">
-                          {Math.floor((new Date(exam.endTime).getTime() - now.getTime()) / (1000 * 60))} minutes
+                          {Math.floor((new Date(exam.end_time).getTime() - now.getTime()) / (1000 * 60))} minutes
                         </p>
                       </div>
                       <div>
@@ -150,7 +162,7 @@ const MyExams = () => {
                     <div className="flex items-center gap-4 mt-2">
                       <div>
                         <p className="text-xs text-muted-foreground">Starts</p>
-                        <p>{new Date(exam.startTime).toLocaleString()}</p>
+                        <p>{new Date(exam.start_time).toLocaleString()}</p>
                       </div>
                       <div>
                         <p className="text-xs text-muted-foreground">Duration</p>
@@ -185,7 +197,7 @@ const MyExams = () => {
                     <div className="flex items-center gap-4">
                       <div>
                         <p className="text-xs text-muted-foreground">Date</p>
-                        <p>{new Date(exam.startTime).toLocaleDateString()}</p>
+                        <p>{new Date(exam.start_time).toLocaleDateString()}</p>
                       </div>
                       <div>
                         <p className="text-xs text-muted-foreground">Score</p>

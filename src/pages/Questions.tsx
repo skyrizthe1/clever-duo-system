@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Header } from '@/components/Header';
@@ -100,18 +99,44 @@ const Questions = () => {
     setIsFormDialogOpen(true);
   };
   
-  const exportQuestions = () => {
+  // Function to export questions as PDF
+  const exportQuestionsToPDF = () => {
     try {
-      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(questions));
-      const downloadAnchorNode = document.createElement('a');
-      downloadAnchorNode.setAttribute("href", dataStr);
-      downloadAnchorNode.setAttribute("download", "questions.json");
-      document.body.appendChild(downloadAnchorNode);
-      downloadAnchorNode.click();
-      downloadAnchorNode.remove();
+      // Create a simple text representation for PDF
+      let pdfContent = "QUESTION BANK\n\n";
+      
+      questions.forEach((question, index) => {
+        pdfContent += `Question ${index + 1}:\n`;
+        pdfContent += `Type: ${question.type}\n`;
+        pdfContent += `Category: ${question.category}\n`;
+        pdfContent += `Points: ${question.points}\n`;
+        pdfContent += `Content: ${question.content}\n`;
+        
+        if (question.options) {
+          pdfContent += `Options:\n`;
+          question.options.forEach((option, optIndex) => {
+            pdfContent += `  ${optIndex + 1}. ${option}\n`;
+          });
+        }
+        
+        pdfContent += `Correct Answer: ${Array.isArray(question.correctAnswer) ? question.correctAnswer.join(', ') : question.correctAnswer}\n`;
+        pdfContent += "\n" + "=".repeat(50) + "\n\n";
+      });
+      
+      // Create a blob and download
+      const blob = new Blob([pdfContent], { type: 'text/plain' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'questions-bank.txt';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      
       toast({
         title: "Export successful",
-        description: "Questions exported to JSON file",
+        description: "Questions exported as text file",
       });
     } catch (error) {
       toast({
@@ -174,8 +199,8 @@ const Questions = () => {
             <Button onClick={handleCreateNewQuestion}>
               <Plus className="mr-2 h-4 w-4" /> New Question
             </Button>
-            <Button variant="outline" onClick={exportQuestions}>
-              <FileDown className="mr-2 h-4 w-4" /> Export
+            <Button variant="outline" onClick={exportQuestionsToPDF}>
+              <FileDown className="mr-2 h-4 w-4" /> Export PDF
             </Button>
             <Button variant="outline" onClick={generateRandomExam}>
               Generate Random Exam
@@ -283,7 +308,7 @@ const Questions = () => {
       
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         {selectedQuestion && (
-          <QuestionDialog question={selectedQuestion} onClose={() => setIsDialogOpen(false)} />
+          <QuestionDialog question={selectedQuestion} />
         )}
       </Dialog>
       

@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getExams, getQuestions, updateExam } from '@/services/api';
@@ -144,11 +143,11 @@ export function TeacherDashboard() {
                 <div className="flex items-center gap-6 text-sm">
                   <div>
                     <p className="text-xs text-gray-500 font-medium">Start</p>
-                    <p className="text-gray-700">{new Date(exam.startTime).toLocaleString()}</p>
+                    <p className="text-gray-700">{new Date(exam.start_time).toLocaleString()}</p>
                   </div>
                   <div>
                     <p className="text-xs text-gray-500 font-medium">End</p>
-                    <p className="text-gray-700">{new Date(exam.endTime).toLocaleString()}</p>
+                    <p className="text-gray-700">{new Date(exam.end_time).toLocaleString()}</p>
                   </div>
                   <div>
                     <p className="text-xs text-gray-500 font-medium">Duration</p>
@@ -160,7 +159,7 @@ export function TeacherDashboard() {
                 <Button 
                   variant="outline" 
                   size="sm"
-                  onClick={() => navigate(`/exams/${exam.id}`)}
+                  onClick={() => navigate('/exams')}
                   className="hover:bg-blue-50 border-blue-200 text-blue-700"
                 >
                   Edit
