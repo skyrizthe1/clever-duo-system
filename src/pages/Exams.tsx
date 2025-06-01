@@ -67,7 +67,9 @@ const Exams = () => {
   };
 
   const handleEdit = (exam: any) => {
+    console.log('Editing exam:', exam);
     setEditingExam(exam);
+    setDetailsOpen(true);
   };
 
   const handleDelete = (examId: string) => {
@@ -152,20 +154,36 @@ const Exams = () => {
                 status = 'completed';
               }
 
+              const getStatusBadge = (status: string) => {
+                const baseClasses = "text-white font-semibold tracking-wide text-xs px-3 py-1";
+                switch (status) {
+                  case 'ongoing':
+                    return (
+                      <Badge className={`${baseClasses} bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 shadow-lg`}>
+                        ONGOING
+                      </Badge>
+                    );
+                  case 'completed':
+                    return (
+                      <Badge className={`${baseClasses} bg-gradient-to-r from-gray-500 to-gray-600 hover:from-gray-600 hover:to-gray-700 shadow-lg`}>
+                        COMPLETED
+                      </Badge>
+                    );
+                  default:
+                    return (
+                      <Badge className={`${baseClasses} bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 shadow-lg`}>
+                        UPCOMING
+                      </Badge>
+                    );
+                }
+              };
+
               return (
                 <Card key={exam.id} className="hover:shadow-lg transition-shadow">
                   <CardHeader>
                     <div className="flex justify-between items-start">
                       <CardTitle className="text-lg">{exam.title}</CardTitle>
-                      <Badge 
-                        variant={status === 'ongoing' ? 'default' : status === 'completed' ? 'secondary' : 'outline'}
-                        className={
-                          status === 'ongoing' ? 'bg-green-500' : 
-                          status === 'completed' ? 'bg-gray-500' : 'bg-blue-500'
-                        }
-                      >
-                        {status}
-                      </Badge>
+                      {getStatusBadge(status)}
                     </div>
                     <p className="text-muted-foreground text-sm">{exam.description}</p>
                   </CardHeader>

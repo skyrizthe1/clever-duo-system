@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getExams, getQuestions, updateExam } from '@/services/api';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
@@ -9,6 +9,7 @@ import { useNavigate } from 'react-router-dom';
 export function TeacherDashboard() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const [loadingExams, setLoadingExams] = useState<Record<string, boolean>>({});
   
   const { data: questions = [] } = useQuery({
     queryKey: ['questions'],
@@ -22,12 +23,17 @@ export function TeacherDashboard() {
 
   const updateExamMutation = useMutation({
     mutationFn: ({ id, updates }: { id: string; updates: any }) => updateExam(id, updates),
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['exams'] });
+      setLoadingExams(prev => ({ ...prev, [variables.id]: false }));
+    },
+    onError: (_, variables) => {
+      setLoadingExams(prev => ({ ...prev, [variables.id]: false }));
     }
   });
 
   const handleTogglePublish = (examId: string, currentPublished: boolean) => {
+    setLoadingExams(prev => ({ ...prev, [examId]: true }));
     updateExamMutation.mutate({
       id: examId,
       updates: { published: !currentPublished }
@@ -170,18 +176,18 @@ export function TeacherDashboard() {
                     size="sm" 
                     className="hover:bg-gray-200"
                     onClick={() => handleTogglePublish(exam.id, exam.published)}
-                    disabled={updateExamMutation.isPending}
+                    disabled={loadingExams[exam.id]}
                   >
-                    {updateExamMutation.isPending ? 'Updating...' : 'Unpublish'}
+                    {loadingExams[exam.id] ? 'Updating...' : 'Unpublish'}
                   </Button>
                 ) : (
                   <Button 
                     size="sm" 
                     className="bg-gradient-to-r from-green-500 to-blue-500 hover:from-green-600 hover:to-blue-600 text-white"
                     onClick={() => handleTogglePublish(exam.id, exam.published)}
-                    disabled={updateExamMutation.isPending}
+                    disabled={loadingExams[exam.id]}
                   >
-                    {updateExamMutation.isPending ? 'Publishing...' : 'Publish'}
+                    {loadingExams[exam.id] ? 'Publishing...' : 'Publish'}
                   </Button>
                 )}
               </CardFooter>

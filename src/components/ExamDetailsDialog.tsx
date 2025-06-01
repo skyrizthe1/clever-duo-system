@@ -1,19 +1,190 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Calendar, Clock, BookOpen, User } from 'lucide-react';
-import { Exam } from '@/services/api';
+import { Exam, Question } from '@/services/api';
 
 interface ExamDetailsDialogProps {
   exam: Exam | null;
+  questions?: Question[];
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onStartExam?: () => void;
+  isCreating?: boolean;
+  isEditing?: boolean;
+  onCreateExam?: (examData: any) => void;
+  onUpdateExam?: (examData: any) => void;
+  onCloseCreate?: () => void;
+  onCloseEdit?: () => void;
+  editingExam?: any;
 }
 
-export function ExamDetailsDialog({ exam, open, onOpenChange, onStartExam }: ExamDetailsDialogProps) {
+export function ExamDetailsDialog({ 
+  exam, 
+  questions = [],
+  open, 
+  onOpenChange, 
+  onStartExam,
+  isCreating = false,
+  isEditing = false,
+  onCreateExam,
+  onUpdateExam,
+  onCloseCreate,
+  onCloseEdit,
+  editingExam
+}: ExamDetailsDialogProps) {
+  const [formData, setFormData] = useState({
+    title: '',
+    description: '',
+    duration: 60,
+    start_time: '',
+    end_time: '',
+    published: false,
+    questions: []
+  });
+
+  // Initialize form data when editing
+  React.useEffect(() => {
+    if (isEditing && editingExam) {
+      setFormData({
+        title: editingExam.title || '',
+        description: editingExam.description || '',
+        duration: editingExam.duration || 60,
+        start_time: editingExam.start_time ? new Date(editingExam.start_time).toISOString().slice(0, 16) : '',
+        end_time: editingExam.end_time ? new Date(editingExam.end_time).toISOString().slice(0, 16) : '',
+        published: editingExam.published || false,
+        questions: editingExam.questions || []
+      });
+    } else if (isCreating) {
+      setFormData({
+        title: '',
+        description: '',
+        duration: 60,
+        start_time: '',
+        end_time: '',
+        published: false,
+        questions: []
+      });
+    }
+  }, [isEditing, editingExam, isCreating]);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (isCreating && onCreateExam) {
+      onCreateExam(formData);
+    } else if (isEditing && onUpdateExam) {
+      onUpdateExam(formData);
+    }
+  };
+
+  const handleClose = () => {
+    if (isCreating && onCloseCreate) {
+      onCloseCreate();
+    } else if (isEditing && onCloseEdit) {
+      onCloseEdit();
+    } else {
+      onOpenChange(false);
+    }
+  };
+
+  // If we're creating or editing, show the form
+  if (isCreating || isEditing) {
+    return (
+      <Dialog open={open} onOpenChange={handleClose}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>{isCreating ? 'Create New Exam' : 'Edit Exam'}</DialogTitle>
+            <DialogDescription>
+              {isCreating ? 'Fill in the details to create a new exam.' : 'Update the exam details.'}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <Label htmlFor="title">Title</Label>
+              <Input
+                id="title"
+                value={formData.title}
+                onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
+                required
+              />
+            </div>
+            
+            <div>
+              <Label htmlFor="description">Description</Label>
+              <Textarea
+                id="description"
+                value={formData.description}
+                onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                required
+              />
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="start_time">Start Time</Label>
+                <Input
+                  id="start_time"
+                  type="datetime-local"
+                  value={formData.start_time}
+                  onChange={(e) => setFormData(prev => ({ ...prev, start_time: e.target.value }))}
+                  required
+                />
+              </div>
+              
+              <div>
+                <Label htmlFor="end_time">End Time</Label>
+                <Input
+                  id="end_time"
+                  type="datetime-local"
+                  value={formData.end_time}
+                  onChange={(e) => setFormData(prev => ({ ...prev, end_time: e.target.value }))}
+                  required
+                />
+              </div>
+            </div>
+            
+            <div>
+              <Label htmlFor="duration">Duration (minutes)</Label>
+              <Input
+                id="duration"
+                type="number"
+                value={formData.duration}
+                onChange={(e) => setFormData(prev => ({ ...prev, duration: parseInt(e.target.value) }))}
+                required
+              />
+            </div>
+            
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="published"
+                checked={formData.published}
+                onChange={(e) => setFormData(prev => ({ ...prev, published: e.target.checked }))}
+              />
+              <Label htmlFor="published">Published</Label>
+            </div>
+            
+            <div className="flex gap-3 justify-end">
+              <Button type="button" variant="outline" onClick={handleClose}>
+                Cancel
+              </Button>
+              <Button type="submit">
+                {isCreating ? 'Create Exam' : 'Update Exam'}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  // Show exam details view
   if (!exam) return null;
 
   const now = new Date();
