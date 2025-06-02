@@ -1,6 +1,6 @@
 
 // Database configuration for MySQL integration
-// This file prepares the project for MySQL Workbench 8.0 connection
+// Updated with user's MySQL backend credentials
 
 export interface DatabaseConfig {
   host: string;
@@ -12,24 +12,30 @@ export interface DatabaseConfig {
   connectionLimit?: number;
 }
 
-// Development configuration (to be updated with your MySQL credentials)
+// Backend API configuration
+export const backendConfig = {
+  baseUrl: 'http://127.0.0.1:5000',
+  apiVersion: 'v1'
+};
+
+// Development configuration with user's MySQL credentials
 export const databaseConfig: DatabaseConfig = {
-  host: 'localhost', // Update with your MySQL host
-  port: 3306, // Default MySQL port
-  database: 'exam_portal', // Database name
-  user: 'root', // Update with your MySQL username
-  password: '', // Update with your MySQL password
+  host: '127.0.0.1',
+  port: 3306, // MySQL port
+  database: 'exam_portal',
+  user: 'root',
+  password: 'nggforlife10+',
   ssl: false,
   connectionLimit: 10
 };
 
 // Production configuration (for deployment)
 export const productionDatabaseConfig: DatabaseConfig = {
-  host: process.env.DB_HOST || 'localhost',
+  host: process.env.DB_HOST || '127.0.0.1',
   port: parseInt(process.env.DB_PORT || '3306'),
   database: process.env.DB_NAME || 'exam_portal',
   user: process.env.DB_USER || 'root',
-  password: process.env.DB_PASSWORD || '',
+  password: process.env.DB_PASSWORD || 'nggforlife10+',
   ssl: process.env.DB_SSL === 'true',
   connectionLimit: parseInt(process.env.DB_CONNECTION_LIMIT || '10')
 };
@@ -84,5 +90,17 @@ export const databaseSchema = {
     time_spent: 'INT NOT NULL',
     feedback: 'JSON',
     created_at: 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP'
+  },
+  tasks: {
+    id: 'VARCHAR(36) PRIMARY KEY',
+    title: 'VARCHAR(255) NOT NULL',
+    description: 'TEXT',
+    status: 'ENUM("todo", "inprogress", "review", "done") NOT NULL',
+    priority: 'ENUM("low", "medium", "high") NOT NULL',
+    created_at: 'TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
+    due_date: 'TIMESTAMP',
+    tags: 'JSON',
+    assigned_to: 'VARCHAR(36)',
+    created_by: 'VARCHAR(36)'
   }
 };
