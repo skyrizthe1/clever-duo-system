@@ -16,7 +16,6 @@ import {
 import { Input } from '@/components/ui/input';
 import { login } from '@/services/api';
 import { toast } from 'sonner';
-import { useQueryClient } from '@tanstack/react-query';
 
 const formSchema = z.object({
   email: z.string().email('Invalid email address'),
@@ -27,7 +26,6 @@ type FormValues = z.infer<typeof formSchema>;
 
 const Login = () => {
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   
   const form = useForm<FormValues>({
@@ -48,13 +46,11 @@ const Login = () => {
       const user = await login(values.email, values.password);
       console.log('Login successful, user:', user);
       
-      await queryClient.invalidateQueries();
-      queryClient.setQueryData(['currentUser'], user);
-      
       toast.success('Login successful');
       
+      // Force page refresh to ensure clean state
       setTimeout(() => {
-        navigate('/', { replace: true });
+        window.location.href = '/';
       }, 500);
       
     } catch (error) {

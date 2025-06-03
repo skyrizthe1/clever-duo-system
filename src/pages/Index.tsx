@@ -1,17 +1,36 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Header } from '@/components/Header';
-import { useQuery } from '@tanstack/react-query';
 import { getCurrentUser } from '@/services/api';
 import { AdminDashboard } from '@/components/AdminDashboard';
 import { TeacherDashboard } from '@/components/TeacherDashboard';
 import { StudentDashboard } from '@/components/StudentDashboard';
 
+interface User {
+  id: string;
+  name: string;
+  email: string;
+  role: 'admin' | 'teacher' | 'student';
+}
+
 const Index = () => {
-  const { data: currentUser, isLoading } = useQuery({
-    queryKey: ['currentUser'],
-    queryFn: getCurrentUser
-  });
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const user = await getCurrentUser();
+        setCurrentUser(user);
+      } catch (error) {
+        console.error('Error fetching current user:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchUser();
+  }, []);
 
   if (isLoading) {
     return (

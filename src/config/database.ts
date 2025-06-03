@@ -1,4 +1,3 @@
-
 // Database configuration for MySQL integration
 // Updated with user's MySQL backend credentials
 

@@ -1,9 +1,8 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from './ui/button';
-import { getCurrentUser, logout, UserRole } from '@/services/api';
+import { logout, getCurrentUser, UserRole } from '@/services/api';
 import { Menu, X } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { 
@@ -16,29 +15,60 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Sheet, SheetContent, SheetTrigger } from './ui/sheet';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
+
+interface User {
+  id: string;
+  name: string;
+  email: string;
+  role: UserRole;
+}
 
 export function Header() {
   const navigate = useNavigate();
   const location = useLocation();
-  const queryClient = useQueryClient();
   const [isMenuOpen, setIsMenuOpen] = React.useState(false);
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
   
-  const { data: user } = useQuery({
-    queryKey: ['currentUser'],
-    queryFn: getCurrentUser
-  });
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const currentUser = await getCurrentUser();
+        setUser(currentUser);
+      } catch (error) {
+        console.error('Error fetching user:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    // Set up auth state listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        if (event === 'SIGNED_IN' && session?.user) {
+          setTimeout(fetchUser, 0);
+        } else if (event === 'SIGNED_OUT') {
+          setUser(null);
+          setLoading(false);
+        }
+      }
+    );
+
+    fetchUser();
+
+    return () => subscription.unsubscribe();
+  }, []);
   
-  const logoutMutation = useMutation({
-    mutationFn: logout,
-    onSuccess: () => {
-      queryClient.setQueryData(['currentUser'], null);
+  const handleLogout = async () => {
+    try {
+      await logout();
+      setUser(null);
       navigate('/login');
-      toast.success('Logged out successfully');
+    } catch (error) {
+      console.error('Logout error:', error);
+      toast.error('Logout failed');
     }
-  });
-  
-  const handleLogout = () => {
-    logoutMutation.mutate();
   };
   
   const getInitials = (name: string) => {
@@ -74,6 +104,16 @@ export function Header() {
   const isActiveLink = (path: string) => {
     return location.pathname === path;
   };
+
+  if (loading) {
+    return (
+      <header className="bg-background border-b sticky top-0 z-30">
+        <div className="container mx-auto px-4 md:px-6 flex h-14 items-center">
+          <div className="animate-pulse bg-gray-200 h-8 w-32 rounded"></div>
+        </div>
+      </header>
+    );
+  }
   
   return (
     <header className="bg-background border-b sticky top-0 z-30">

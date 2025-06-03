@@ -1,7 +1,6 @@
 
-// Real API service that connects to MySQL backend
 import { toast } from "sonner";
-import { backendConfig } from '@/config/database';
+import { supabase } from "@/integrations/supabase/client";
 
 // Types
 export type TaskStatus = "todo" | "inprogress" | "review" | "done";
@@ -71,60 +70,36 @@ export interface ExamSubmission {
   time_spent: number;
 }
 
-// API Base URL
-const API_BASE = backendConfig.baseUrl;
-
-// Helper function to make API requests
-async function apiRequest(endpoint: string, options: RequestInit = {}) {
-  const url = `${API_BASE}/api/${endpoint}`;
-  
-  const defaultHeaders = {
-    'Content-Type': 'application/json',
-  };
-
-  // Get token from localStorage if available
-  const token = localStorage.getItem('authToken');
-  if (token) {
-    defaultHeaders['Authorization'] = `Bearer ${token}`;
-  }
-
-  const config = {
-    ...options,
-    headers: {
-      ...defaultHeaders,
-      ...options.headers,
-    },
-  };
-
-  console.log(`Making API request to: ${url}`, config);
-
-  try {
-    const response = await fetch(url, config);
-    
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
-      throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
-    }
-    
-    return await response.json();
-  } catch (error) {
-    console.error('API request failed:', error);
-    throw error;
-  }
-}
-
-// User Registration - POST /api/auth/register
+// User Registration with Supabase
 export async function registerUser(userData: RegisterUserData): Promise<User> {
   try {
-    console.log('Registering user:', userData.email);
-    const response = await apiRequest('auth/register', {
-      method: 'POST',
-      body: JSON.stringify(userData),
-    });
+    console.log('Registering user with Supabase:', userData.email);
     
-    console.log('Registration response:', response);
-    toast.success("Registration successful!");
-    return response.user;
+    const { data, error } = await supabase.auth.signUp({
+      email: userData.email,
+      password: userData.password,
+      options: {
+        data: {
+          name: userData.name,
+          role: userData.role,
+        },
+        emailRedirectTo: `${window.location.origin}/`
+      }
+    });
+
+    if (error) throw error;
+
+    if (data.user) {
+      toast.success("Registration successful! Please check your email to verify your account.");
+      return {
+        id: data.user.id,
+        name: userData.name,
+        email: userData.email,
+        role: userData.role,
+      };
+    }
+
+    throw new Error('Registration failed');
   } catch (error) {
     console.error('Registration error:', error);
     toast.error(error.message || "Registration failed");
@@ -132,25 +107,70 @@ export async function registerUser(userData: RegisterUserData): Promise<User> {
   }
 }
 
-// User Login - POST /api/auth/login
+// User Login with Supabase
 export async function login(email: string, password: string): Promise<User> {
   try {
-    console.log('Attempting login for:', email);
-    const response = await apiRequest('auth/login', {
-      method: 'POST',
-      body: JSON.stringify({ email, password }),
+    console.log('Attempting login with Supabase for:', email);
+    
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
     });
-    
-    console.log('Login response:', response);
-    
-    // Store token in localStorage
-    if (response.token) {
-      localStorage.setItem('authToken', response.token);
-      console.log('Auth token stored successfully');
+
+    if (error) throw error;
+
+    if (data.user) {
+      console.log('Login successful:', data.user);
+      
+      // Get user profile from profiles table
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', data.user.id)
+        .single();
+
+      if (profileError) {
+        console.error('Profile fetch error:', profileError);
+        // If profile doesn't exist, create one
+        const { error: insertError } = await supabase
+          .from('profiles')
+          .insert({
+            id: data.user.id,
+            name: data.user.user_metadata?.name || data.user.email?.split('@')[0] || 'User',
+            role: data.user.user_metadata?.role || 'student'
+          });
+        
+        if (!insertError) {
+          const { data: newProfile } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', data.user.id)
+            .single();
+          
+          if (newProfile) {
+            toast.success("Login successful!");
+            return {
+              id: newProfile.id,
+              name: newProfile.name,
+              email: data.user.email!,
+              role: newProfile.role,
+            };
+          }
+        }
+      }
+
+      if (profile) {
+        toast.success("Login successful!");
+        return {
+          id: profile.id,
+          name: profile.name,
+          email: data.user.email!,
+          role: profile.role,
+        };
+      }
     }
-    
-    toast.success("Login successful!");
-    return response.user;
+
+    throw new Error('Login failed');
   } catch (error) {
     console.error('Login error:', error);
     toast.error(error.message || "Invalid credentials");
@@ -158,55 +178,80 @@ export async function login(email: string, password: string): Promise<User> {
   }
 }
 
-// User Logout - POST /api/auth/logout
+// User Logout with Supabase
 export async function logout(): Promise<void> {
   try {
-    console.log('Logging out user');
-    await apiRequest('auth/logout', {
-      method: 'POST',
-    });
+    console.log('Logging out user with Supabase');
+    const { error } = await supabase.auth.signOut();
     
-    localStorage.removeItem('authToken');
-    console.log('Auth token removed from localStorage');
+    if (error) throw error;
+    
+    console.log('Logout successful');
     toast.success("Logged out successfully");
   } catch (error) {
     console.error('Logout error:', error);
-    localStorage.removeItem('authToken'); // Clear token anyway
     toast.success("Logged out successfully");
   }
 }
 
-// Get Current User - GET /api/auth/me
+// Get Current User with Supabase
 export async function getCurrentUser(): Promise<User | null> {
   try {
-    const token = localStorage.getItem('authToken');
-    if (!token) {
-      console.log('No auth token found');
+    const { data: { user }, error } = await supabase.auth.getUser();
+    
+    if (error || !user) {
+      console.log('No authenticated user found');
       return null;
     }
     
-    console.log('Getting current user info');
-    const response = await apiRequest('auth/me');
-    console.log('Current user response:', response);
-    return response.user;
+    console.log('Getting current user profile');
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', user.id)
+      .single();
+
+    if (profileError || !profile) {
+      console.error('Profile fetch error:', profileError);
+      return null;
+    }
+
+    console.log('Current user profile:', profile);
+    return {
+      id: profile.id,
+      name: profile.name,
+      email: user.email!,
+      role: profile.role,
+    };
   } catch (error) {
     console.error('Get current user error:', error);
-    // If token is invalid, remove it
-    localStorage.removeItem('authToken');
     return null;
   }
 }
 
-// Task management
+// Task management with Supabase
 export async function getTasks(): Promise<Task[]> {
   try {
-    const response = await apiRequest('tasks');
-    return response.tasks.map(task => ({
-      ...task,
-      createdAt: new Date(task.created_at),
+    const { data, error } = await supabase
+      .from('tasks')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+
+    return data.map(task => ({
+      id: task.id,
+      title: task.title,
+      description: task.description || '',
+      status: task.status,
+      priority: task.priority,
+      createdAt: new Date(task.created_at!),
       dueDate: task.due_date ? new Date(task.due_date) : undefined,
+      tags: task.tags || [],
+      assignedTo: task.assigned_to || undefined,
     }));
   } catch (error) {
+    console.error('Get tasks error:', error);
     toast.error("Failed to fetch tasks");
     throw error;
   }
@@ -214,26 +259,40 @@ export async function getTasks(): Promise<Task[]> {
 
 export async function createTask(task: Omit<Task, "id" | "createdAt">): Promise<Task> {
   try {
-    const response = await apiRequest('tasks', {
-      method: 'POST',
-      body: JSON.stringify({
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('User not authenticated');
+
+    const { data, error } = await supabase
+      .from('tasks')
+      .insert({
         title: task.title,
         description: task.description,
         status: task.status,
         priority: task.priority,
         due_date: task.dueDate?.toISOString(),
-        tags: JSON.stringify(task.tags),
+        tags: task.tags,
         assigned_to: task.assignedTo,
-      }),
-    });
-    
+        created_by: user.id,
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+
     toast.success("Task created successfully");
     return {
-      ...response.task,
-      createdAt: new Date(response.task.created_at),
-      dueDate: response.task.due_date ? new Date(response.task.due_date) : undefined,
+      id: data.id,
+      title: data.title,
+      description: data.description || '',
+      status: data.status,
+      priority: data.priority,
+      createdAt: new Date(data.created_at!),
+      dueDate: data.due_date ? new Date(data.due_date) : undefined,
+      tags: data.tags || [],
+      assignedTo: data.assigned_to || undefined,
     };
   } catch (error) {
+    console.error('Create task error:', error);
     toast.error("Failed to create task");
     throw error;
   }
@@ -241,26 +300,37 @@ export async function createTask(task: Omit<Task, "id" | "createdAt">): Promise<
 
 export async function updateTask(id: string, updates: Partial<Task>): Promise<Task> {
   try {
-    const response = await apiRequest(`tasks/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify({
+    const { data, error } = await supabase
+      .from('tasks')
+      .update({
         title: updates.title,
         description: updates.description,
         status: updates.status,
         priority: updates.priority,
         due_date: updates.dueDate?.toISOString(),
-        tags: updates.tags ? JSON.stringify(updates.tags) : undefined,
+        tags: updates.tags,
         assigned_to: updates.assignedTo,
-      }),
-    });
-    
+      })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) throw error;
+
     toast.success("Task updated successfully");
     return {
-      ...response.task,
-      createdAt: new Date(response.task.created_at),
-      dueDate: response.task.due_date ? new Date(response.task.due_date) : undefined,
+      id: data.id,
+      title: data.title,
+      description: data.description || '',
+      status: data.status,
+      priority: data.priority,
+      createdAt: new Date(data.created_at!),
+      dueDate: data.due_date ? new Date(data.due_date) : undefined,
+      tags: data.tags || [],
+      assignedTo: data.assigned_to || undefined,
     };
   } catch (error) {
+    console.error('Update task error:', error);
     toast.error("Failed to update task");
     throw error;
   }
@@ -268,38 +338,66 @@ export async function updateTask(id: string, updates: Partial<Task>): Promise<Ta
 
 export async function deleteTask(id: string): Promise<void> {
   try {
-    await apiRequest(`tasks/${id}`, {
-      method: 'DELETE',
-    });
-    
+    const { error } = await supabase
+      .from('tasks')
+      .delete()
+      .eq('id', id);
+
+    if (error) throw error;
+
     toast.success("Task deleted successfully");
   } catch (error) {
+    console.error('Delete task error:', error);
     toast.error("Failed to delete task");
     throw error;
   }
 }
 
-// User management
+// User management with Supabase
 export async function getUsers(): Promise<User[]> {
   try {
-    const response = await apiRequest('users');
-    return response.users;
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*');
+
+    if (error) throw error;
+
+    return data.map(profile => ({
+      id: profile.id,
+      name: profile.name,
+      email: profile.id, // We'll need to get email from auth.users if needed
+      role: profile.role,
+      avatar: profile.avatar_url || undefined,
+    }));
   } catch (error) {
+    console.error('Get users error:', error);
     toast.error("Failed to fetch users");
     throw error;
   }
 }
 
-// Question management
+// Question management with Supabase
 export async function getQuestions(): Promise<Question[]> {
   try {
-    const response = await apiRequest('questions');
-    return response.questions.map(q => ({
-      ...q,
+    const { data, error } = await supabase
+      .from('questions')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+
+    return data.map(q => ({
+      id: q.id,
+      type: q.type,
+      content: q.content,
+      options: q.options || undefined,
       correctAnswer: q.correct_answer,
+      points: q.points,
+      category: q.category,
       createdBy: q.created_by,
     }));
   } catch (error) {
+    console.error('Get questions error:', error);
     toast.error("Failed to fetch questions");
     throw error;
   }
@@ -307,26 +405,38 @@ export async function getQuestions(): Promise<Question[]> {
 
 export async function createQuestion(question: Omit<Question, "id">): Promise<Question> {
   try {
-    const response = await apiRequest('questions', {
-      method: 'POST',
-      body: JSON.stringify({
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('User not authenticated');
+
+    const { data, error } = await supabase
+      .from('questions')
+      .insert({
         type: question.type,
         content: question.content,
-        options: question.options ? JSON.stringify(question.options) : null,
-        correct_answer: JSON.stringify(question.correctAnswer),
+        options: question.options,
+        correct_answer: question.correctAnswer,
         points: question.points,
         category: question.category,
-        created_by: question.createdBy,
-      }),
-    });
-    
+        created_by: user.id,
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+
     toast.success("Question created successfully");
     return {
-      ...response.question,
-      correctAnswer: response.question.correct_answer,
-      createdBy: response.question.created_by,
+      id: data.id,
+      type: data.type,
+      content: data.content,
+      options: data.options || undefined,
+      correctAnswer: data.correct_answer,
+      points: data.points,
+      category: data.category,
+      createdBy: data.created_by,
     };
   } catch (error) {
+    console.error('Create question error:', error);
     toast.error("Failed to create question");
     throw error;
   }
@@ -334,25 +444,35 @@ export async function createQuestion(question: Omit<Question, "id">): Promise<Qu
 
 export async function updateQuestion(id: string, updates: Partial<Question>): Promise<Question> {
   try {
-    const response = await apiRequest(`questions/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify({
+    const { data, error } = await supabase
+      .from('questions')
+      .update({
         type: updates.type,
         content: updates.content,
-        options: updates.options ? JSON.stringify(updates.options) : undefined,
-        correct_answer: updates.correctAnswer ? JSON.stringify(updates.correctAnswer) : undefined,
+        options: updates.options,
+        correct_answer: updates.correctAnswer,
         points: updates.points,
         category: updates.category,
-      }),
-    });
-    
+      })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) throw error;
+
     toast.success("Question updated successfully");
     return {
-      ...response.question,
-      correctAnswer: response.question.correct_answer,
-      createdBy: response.question.created_by,
+      id: data.id,
+      type: data.type,
+      content: data.content,
+      options: data.options || undefined,
+      correctAnswer: data.correct_answer,
+      points: data.points,
+      category: data.category,
+      createdBy: data.created_by,
     };
   } catch (error) {
+    console.error('Update question error:', error);
     toast.error("Failed to update question");
     throw error;
   }
@@ -360,28 +480,44 @@ export async function updateQuestion(id: string, updates: Partial<Question>): Pr
 
 export async function deleteQuestion(id: string): Promise<void> {
   try {
-    await apiRequest(`questions/${id}`, {
-      method: 'DELETE',
-    });
-    
+    const { error } = await supabase
+      .from('questions')
+      .delete()
+      .eq('id', id);
+
+    if (error) throw error;
+
     toast.success("Question deleted successfully");
   } catch (error) {
+    console.error('Delete question error:', error);
     toast.error("Failed to delete question");
     throw error;
   }
 }
 
-// Exam management
+// Exam management with Supabase
 export async function getExams(): Promise<Exam[]> {
   try {
-    const response = await apiRequest('exams');
-    return response.exams.map(exam => ({
-      ...exam,
+    const { data, error } = await supabase
+      .from('exams')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+
+    return data.map(exam => ({
+      id: exam.id,
+      title: exam.title,
+      description: exam.description || '',
+      duration: exam.duration,
       start_time: new Date(exam.start_time),
       end_time: new Date(exam.end_time),
+      questions: exam.questions,
       created_by: exam.created_by,
+      published: exam.published || false,
     }));
   } catch (error) {
+    console.error('Get exams error:', error);
     toast.error("Failed to fetch exams");
     throw error;
   }
@@ -389,28 +525,40 @@ export async function getExams(): Promise<Exam[]> {
 
 export async function createExam(exam: Omit<Exam, "id">): Promise<Exam> {
   try {
-    const response = await apiRequest('exams', {
-      method: 'POST',
-      body: JSON.stringify({
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('User not authenticated');
+
+    const { data, error } = await supabase
+      .from('exams')
+      .insert({
         title: exam.title,
         description: exam.description,
         duration: exam.duration,
         start_time: exam.start_time.toISOString(),
         end_time: exam.end_time.toISOString(),
-        questions: JSON.stringify(exam.questions),
-        created_by: exam.created_by,
+        questions: exam.questions,
+        created_by: user.id,
         published: exam.published,
-      }),
-    });
-    
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+
     toast.success("Exam created successfully");
     return {
-      ...response.exam,
-      start_time: new Date(response.exam.start_time),
-      end_time: new Date(response.exam.end_time),
-      created_by: response.exam.created_by,
+      id: data.id,
+      title: data.title,
+      description: data.description || '',
+      duration: data.duration,
+      start_time: new Date(data.start_time),
+      end_time: new Date(data.end_time),
+      questions: data.questions,
+      created_by: data.created_by,
+      published: data.published || false,
     };
   } catch (error) {
+    console.error('Create exam error:', error);
     toast.error("Failed to create exam");
     throw error;
   }
@@ -418,27 +566,37 @@ export async function createExam(exam: Omit<Exam, "id">): Promise<Exam> {
 
 export async function updateExam(id: string, updates: Partial<Exam>): Promise<Exam> {
   try {
-    const response = await apiRequest(`exams/${id}`, {
-      method: 'PUT',
-      body: JSON.stringify({
+    const { data, error } = await supabase
+      .from('exams')
+      .update({
         title: updates.title,
         description: updates.description,
         duration: updates.duration,
         start_time: updates.start_time?.toISOString(),
         end_time: updates.end_time?.toISOString(),
-        questions: updates.questions ? JSON.stringify(updates.questions) : undefined,
+        questions: updates.questions,
         published: updates.published,
-      }),
-    });
-    
+      })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) throw error;
+
     toast.success("Exam updated successfully");
     return {
-      ...response.exam,
-      start_time: new Date(response.exam.start_time),
-      end_time: new Date(response.exam.end_time),
-      created_by: response.exam.created_by,
+      id: data.id,
+      title: data.title,
+      description: data.description || '',
+      duration: data.duration,
+      start_time: new Date(data.start_time),
+      end_time: new Date(data.end_time),
+      questions: data.questions,
+      created_by: data.created_by,
+      published: data.published || false,
     };
   } catch (error) {
+    console.error('Update exam error:', error);
     toast.error("Failed to update exam");
     throw error;
   }
@@ -446,39 +604,56 @@ export async function updateExam(id: string, updates: Partial<Exam>): Promise<Ex
 
 export async function deleteExam(id: string): Promise<void> {
   try {
-    await apiRequest(`exams/${id}`, {
-      method: 'DELETE',
-    });
-    
+    const { error } = await supabase
+      .from('exams')
+      .delete()
+      .eq('id', id);
+
+    if (error) throw error;
+
     toast.success("Exam deleted successfully");
   } catch (error) {
+    console.error('Delete exam error:', error);
     toast.error("Failed to delete exam");
     throw error;
   }
 }
 
-// Exam submission management
+// Exam submission management with Supabase
 export async function submitExam(submission: Omit<ExamSubmission, "id" | "graded">): Promise<ExamSubmission> {
   try {
-    const response = await apiRequest('exam-submissions', {
-      method: 'POST',
-      body: JSON.stringify({
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('User not authenticated');
+
+    const { data, error } = await supabase
+      .from('exam_submissions')
+      .insert({
         exam_id: submission.exam_id,
-        exam_title: submission.exam_title,
-        student_id: submission.student_id,
-        student_name: submission.student_name,
+        student_id: user.id,
         submitted_at: submission.submitted_at.toISOString(),
-        answers: JSON.stringify(submission.answers),
+        answers: submission.answers,
         time_spent: submission.time_spent,
-      }),
-    });
-    
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+
     toast.success("Exam submitted successfully");
     return {
-      ...response.submission,
-      submitted_at: new Date(response.submission.submitted_at),
+      id: data.id,
+      exam_id: data.exam_id,
+      exam_title: submission.exam_title,
+      student_id: data.student_id,
+      student_name: submission.student_name,
+      submitted_at: new Date(data.submitted_at!),
+      graded: data.graded || false,
+      score: data.score || undefined,
+      answers: data.answers,
+      time_spent: data.time_spent || 0,
     };
   } catch (error) {
+    console.error('Submit exam error:', error);
     toast.error("Failed to submit exam");
     throw error;
   }
@@ -486,12 +661,31 @@ export async function submitExam(submission: Omit<ExamSubmission, "id" | "graded
 
 export async function getExamSubmissions(): Promise<ExamSubmission[]> {
   try {
-    const response = await apiRequest('exam-submissions');
-    return response.submissions.map(sub => ({
-      ...sub,
-      submitted_at: new Date(sub.submitted_at),
+    const { data, error } = await supabase
+      .from('exam_submissions')
+      .select(`
+        *,
+        exams!inner(title),
+        profiles!inner(name)
+      `)
+      .order('submitted_at', { ascending: false });
+
+    if (error) throw error;
+
+    return data.map(sub => ({
+      id: sub.id,
+      exam_id: sub.exam_id,
+      exam_title: sub.exams?.title || 'Unknown Exam',
+      student_id: sub.student_id,
+      student_name: sub.profiles?.name || 'Unknown Student',
+      submitted_at: new Date(sub.submitted_at!),
+      graded: sub.graded || false,
+      score: sub.score || undefined,
+      answers: sub.answers,
+      time_spent: sub.time_spent || 0,
     }));
   } catch (error) {
+    console.error('Get exam submissions error:', error);
     toast.error("Failed to fetch exam submissions");
     throw error;
   }
@@ -499,20 +693,38 @@ export async function getExamSubmissions(): Promise<ExamSubmission[]> {
 
 export async function gradeSubmission(submissionId: string, score: number, feedback?: Record<string, string>): Promise<ExamSubmission> {
   try {
-    const response = await apiRequest(`exam-submissions/${submissionId}/grade`, {
-      method: 'PUT',
-      body: JSON.stringify({
+    const { data, error } = await supabase
+      .from('exam_submissions')
+      .update({
         score,
-        feedback: feedback ? JSON.stringify(feedback) : null,
-      }),
-    });
-    
+        feedback,
+        graded: true,
+      })
+      .eq('id', submissionId)
+      .select(`
+        *,
+        exams!inner(title),
+        profiles!inner(name)
+      `)
+      .single();
+
+    if (error) throw error;
+
     toast.success("Submission graded successfully");
     return {
-      ...response.submission,
-      submitted_at: new Date(response.submission.submitted_at),
+      id: data.id,
+      exam_id: data.exam_id,
+      exam_title: data.exams?.title || 'Unknown Exam',
+      student_id: data.student_id,
+      student_name: data.profiles?.name || 'Unknown Student',
+      submitted_at: new Date(data.submitted_at!),
+      graded: data.graded || false,
+      score: data.score || undefined,
+      answers: data.answers,
+      time_spent: data.time_spent || 0,
     };
   } catch (error) {
+    console.error('Grade submission error:', error);
     toast.error("Failed to grade submission");
     throw error;
   }
