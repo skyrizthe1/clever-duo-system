@@ -113,64 +113,86 @@ async function apiRequest(endpoint: string, options: RequestInit = {}) {
   }
 }
 
-// User Registration
+// User Registration - POST /api/auth/register
 export async function registerUser(userData: RegisterUserData): Promise<User> {
   try {
+    console.log('Registering user:', userData.email);
     const response = await apiRequest('auth/register', {
       method: 'POST',
       body: JSON.stringify(userData),
     });
     
+    console.log('Registration response:', response);
     toast.success("Registration successful!");
     return response.user;
   } catch (error) {
+    console.error('Registration error:', error);
     toast.error(error.message || "Registration failed");
     throw error;
   }
 }
 
-// Authentication
+// User Login - POST /api/auth/login
 export async function login(email: string, password: string): Promise<User> {
   try {
+    console.log('Attempting login for:', email);
     const response = await apiRequest('auth/login', {
       method: 'POST',
       body: JSON.stringify({ email, password }),
     });
     
+    console.log('Login response:', response);
+    
     // Store token in localStorage
     if (response.token) {
       localStorage.setItem('authToken', response.token);
+      console.log('Auth token stored successfully');
     }
     
-    console.log('User logged in successfully:', response.user);
+    toast.success("Login successful!");
     return response.user;
   } catch (error) {
+    console.error('Login error:', error);
     toast.error(error.message || "Invalid credentials");
     throw error;
   }
 }
 
+// User Logout - POST /api/auth/logout
 export async function logout(): Promise<void> {
   try {
+    console.log('Logging out user');
     await apiRequest('auth/logout', {
       method: 'POST',
     });
     
     localStorage.removeItem('authToken');
-    toast.info("Logged out successfully");
+    console.log('Auth token removed from localStorage');
+    toast.success("Logged out successfully");
   } catch (error) {
     console.error('Logout error:', error);
     localStorage.removeItem('authToken'); // Clear token anyway
-    toast.info("Logged out successfully");
+    toast.success("Logged out successfully");
   }
 }
 
+// Get Current User - GET /api/auth/me
 export async function getCurrentUser(): Promise<User | null> {
   try {
+    const token = localStorage.getItem('authToken');
+    if (!token) {
+      console.log('No auth token found');
+      return null;
+    }
+    
+    console.log('Getting current user info');
     const response = await apiRequest('auth/me');
+    console.log('Current user response:', response);
     return response.user;
   } catch (error) {
     console.error('Get current user error:', error);
+    // If token is invalid, remove it
+    localStorage.removeItem('authToken');
     return null;
   }
 }
