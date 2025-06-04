@@ -163,7 +163,7 @@ const Grading = () => {
                     return (
                       <TableRow key={sub.id}>
                         <TableCell className="font-medium">{sub.student_name || 'Unknown Student'}</TableCell>
-                        <TableCell>{exam?.title || 'Unknown Exam'}</TableCell>
+                        <TableCell>{sub.exam_title || 'Unknown Exam'}</TableCell>
                         <TableCell>{new Date(sub.submitted_at).toLocaleDateString()}</TableCell>
                         <TableCell>
                           <Badge variant="outline" className={

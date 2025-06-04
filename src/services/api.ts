@@ -1,4 +1,3 @@
-
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -68,6 +67,7 @@ export interface ExamSubmission {
   score?: number;
   answers: Record<string, any>;
   time_spent: number;
+  feedback?: Record<string, string>;
 }
 
 // User Registration with Supabase
@@ -391,7 +391,7 @@ export async function getQuestions(): Promise<Question[]> {
       type: q.type,
       content: q.content,
       options: q.options || undefined,
-      correctAnswer: q.correct_answer,
+      correctAnswer: Array.isArray(q.correct_answer) ? q.correct_answer : String(q.correct_answer),
       points: q.points,
       category: q.category,
       createdBy: q.created_by,
@@ -430,7 +430,7 @@ export async function createQuestion(question: Omit<Question, "id">): Promise<Qu
       type: data.type,
       content: data.content,
       options: data.options || undefined,
-      correctAnswer: data.correct_answer,
+      correctAnswer: Array.isArray(data.correct_answer) ? data.correct_answer : String(data.correct_answer),
       points: data.points,
       category: data.category,
       createdBy: data.created_by,
@@ -466,7 +466,7 @@ export async function updateQuestion(id: string, updates: Partial<Question>): Pr
       type: data.type,
       content: data.content,
       options: data.options || undefined,
-      correctAnswer: data.correct_answer,
+      correctAnswer: Array.isArray(data.correct_answer) ? data.correct_answer : String(data.correct_answer),
       points: data.points,
       category: data.category,
       createdBy: data.created_by,
@@ -631,7 +631,7 @@ export async function submitExam(submission: Omit<ExamSubmission, "id" | "graded
         exam_id: submission.exam_id,
         student_id: user.id,
         submitted_at: submission.submitted_at.toISOString(),
-        answers: submission.answers,
+        answers: submission.answers as any,
         time_spent: submission.time_spent,
       })
       .select()
@@ -649,7 +649,7 @@ export async function submitExam(submission: Omit<ExamSubmission, "id" | "graded
       submitted_at: new Date(data.submitted_at!),
       graded: data.graded || false,
       score: data.score || undefined,
-      answers: data.answers,
+      answers: data.answers as Record<string, any>,
       time_spent: data.time_spent || 0,
     };
   } catch (error) {
@@ -681,8 +681,9 @@ export async function getExamSubmissions(): Promise<ExamSubmission[]> {
       submitted_at: new Date(sub.submitted_at!),
       graded: sub.graded || false,
       score: sub.score || undefined,
-      answers: sub.answers,
+      answers: sub.answers as Record<string, any>,
       time_spent: sub.time_spent || 0,
+      feedback: sub.feedback as Record<string, string> | undefined,
     }));
   } catch (error) {
     console.error('Get exam submissions error:', error);
@@ -697,7 +698,7 @@ export async function gradeSubmission(submissionId: string, score: number, feedb
       .from('exam_submissions')
       .update({
         score,
-        feedback,
+        feedback: feedback as any,
         graded: true,
       })
       .eq('id', submissionId)
@@ -720,8 +721,9 @@ export async function gradeSubmission(submissionId: string, score: number, feedb
       submitted_at: new Date(data.submitted_at!),
       graded: data.graded || false,
       score: data.score || undefined,
-      answers: data.answers,
+      answers: data.answers as Record<string, any>,
       time_spent: data.time_spent || 0,
+      feedback: data.feedback as Record<string, string> | undefined,
     };
   } catch (error) {
     console.error('Grade submission error:', error);
