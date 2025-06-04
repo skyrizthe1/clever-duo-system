@@ -737,3 +737,40 @@ export async function gradeSubmission(submissionId: string, score: number, feedb
     throw error;
   }
 }
+
+// Add new password recovery function
+export async function requestPasswordReset(email: string): Promise<void> {
+  try {
+    console.log('Requesting password reset for:', email);
+    
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+
+    if (error) throw error;
+    
+    toast.success("Password reset email sent! Check your inbox.");
+  } catch (error) {
+    console.error('Password reset error:', error);
+    toast.error(error.message || "Failed to send password reset email");
+    throw error;
+  }
+}
+
+export async function updatePassword(newPassword: string): Promise<void> {
+  try {
+    console.log('Updating password');
+    
+    const { error } = await supabase.auth.updateUser({
+      password: newPassword
+    });
+
+    if (error) throw error;
+    
+    toast.success("Password updated successfully!");
+  } catch (error) {
+    console.error('Password update error:', error);
+    toast.error(error.message || "Failed to update password");
+    throw error;
+  }
+}
