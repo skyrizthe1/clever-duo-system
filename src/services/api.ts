@@ -391,7 +391,9 @@ export async function getQuestions(): Promise<Question[]> {
       type: q.type,
       content: q.content,
       options: q.options || undefined,
-      correctAnswer: Array.isArray(q.correct_answer) ? q.correct_answer : String(q.correct_answer),
+      correctAnswer: Array.isArray(q.correct_answer) ? 
+        q.correct_answer.map(item => String(item)) : 
+        String(q.correct_answer),
       points: q.points,
       category: q.category,
       createdBy: q.created_by,
@@ -430,7 +432,9 @@ export async function createQuestion(question: Omit<Question, "id">): Promise<Qu
       type: data.type,
       content: data.content,
       options: data.options || undefined,
-      correctAnswer: Array.isArray(data.correct_answer) ? data.correct_answer : String(data.correct_answer),
+      correctAnswer: Array.isArray(data.correct_answer) ? 
+        data.correct_answer.map(item => String(item)) : 
+        String(data.correct_answer),
       points: data.points,
       category: data.category,
       createdBy: data.created_by,
@@ -466,7 +470,9 @@ export async function updateQuestion(id: string, updates: Partial<Question>): Pr
       type: data.type,
       content: data.content,
       options: data.options || undefined,
-      correctAnswer: Array.isArray(data.correct_answer) ? data.correct_answer : String(data.correct_answer),
+      correctAnswer: Array.isArray(data.correct_answer) ? 
+        data.correct_answer.map(item => String(item)) : 
+        String(data.correct_answer),
       points: data.points,
       category: data.category,
       createdBy: data.created_by,
