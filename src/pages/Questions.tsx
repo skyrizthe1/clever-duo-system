@@ -148,10 +148,15 @@ const Questions = () => {
     }
   };
   
-  const handleImportQuestions = (importedQuestions: Omit<Question, 'id'>[]) => {
-    importedQuestions.forEach(question => {
-      createMutation.mutate(question);
-    });
+  const handleImportQuestions = async (importedQuestions: Omit<Question, 'id'>[]) => {
+    try {
+      for (const question of importedQuestions) {
+        await createMutation.mutateAsync(question);
+      }
+      // Don't show additional toast here since createMutation already shows one
+    } catch (error) {
+      console.error('Failed to import questions:', error);
+    }
   };
   
   const filteredQuestions = questions.filter(q => {

@@ -1,148 +1,153 @@
-
-import React from 'react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useRef } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
+import { supabase } from '@/services/supabase';
 import { Button } from '@/components/ui/button';
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { login } from '@/services/api';
-import { toast } from 'sonner';
-
-const formSchema = z.object({
-  email: z.string().email('Invalid email address'),
-  password: z.string().min(6, 'Password must be at least 6 characters'),
-});
-
-type FormValues = z.infer<typeof formSchema>;
+import { Label } from '@/components/ui/label';
+import { useToast } from '@/components/ui/use-toast';
+import ReCaptcha from '@/components/ReCaptcha';
 
 const Login = () => {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
   const navigate = useNavigate();
-  const [isSubmitting, setIsSubmitting] = React.useState(false);
-  
-  const form = useForm<FormValues>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      email: '',
-      password: '',
-    },
-  });
+  const { toast } = useToast();
+  const captchaRef = useRef<any>(null);
 
-  const onSubmit = async (values: FormValues) => {
-    if (isSubmitting) return;
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
     
+    if (!captchaToken) {
+      toast({
+        variant: "destructive",
+        title: "Verification required",
+        description: "Please complete the captcha verification",
+      });
+      return;
+    }
+
+    setLoading(true);
+
     try {
-      setIsSubmitting(true);
-      console.log('Attempting login with:', values.email);
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: "Login successful",
+        description: "Welcome back!",
+      });
+
+      navigate('/');
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Login failed",
+        description: error.message,
+      });
       
-      const user = await login(values.email, values.password);
-      console.log('Login successful, user:', user);
-      
-      toast.success('Login successful');
-      
-      // Force page refresh to ensure clean state
-      setTimeout(() => {
-        window.location.href = '/';
-      }, 500);
-      
-    } catch (error) {
-      console.error('Login error:', error);
-      toast.error('Login failed. Please check your credentials.');
+      // Reset captcha on error
+      if (captchaRef.current) {
+        captchaRef.current.reset();
+        setCaptchaToken(null);
+      }
     } finally {
-      setIsSubmitting(false);
+      setLoading(false);
     }
   };
 
+  const handleCaptchaChange = (token: string | null) => {
+    setCaptchaToken(token);
+  };
+
+  const handleCaptchaExpire = () => {
+    setCaptchaToken(null);
+  };
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-red-50 via-pink-50 to-rose-100">
-      <div className="w-full max-w-md p-8 space-y-8 bg-white/90 backdrop-blur-sm rounded-xl shadow-2xl border border-white/20">
-        <div className="text-center">
-          {/* Exam Portal Icon */}
-          <div className="mx-auto w-20 h-20 bg-gradient-to-br from-red-500 to-pink-600 rounded-full flex items-center justify-center mb-6 shadow-lg">
-            <img 
-              src="/lovable-uploads/88594641-d55c-4c9a-99da-386bbc87288c.png" 
-              alt="Exam Portal" 
-              className="w-12 h-12 object-contain filter brightness-0 invert"
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-md w-full space-y-8">
+        <div>
+          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
+            Sign in to your account
+          </h2>
+        </div>
+        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+          <div className="rounded-md shadow-sm -space-y-px">
+            <div>
+              <Label htmlFor="email" className="sr-only">
+                Email address
+              </Label>
+              <Input
+                id="email"
+                name="email"
+                type="email"
+                required
+                className="rounded-t-md"
+                placeholder="Email address"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+            </div>
+            <div>
+              <Label htmlFor="password" className="sr-only">
+                Password
+              </Label>
+              <Input
+                id="password"
+                name="password"
+                type="password"
+                required
+                className="rounded-b-md"
+                placeholder="Password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+            </div>
+          </div>
+
+          <div className="flex justify-center">
+            <ReCaptcha
+              ref={captchaRef}
+              onVerify={handleCaptchaChange}
+              onExpire={handleCaptchaExpire}
             />
           </div>
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-red-600 to-pink-600 bg-clip-text text-transparent">
-            Exam Portal
-          </h1>
-          <p className="text-gray-600 mt-2 font-medium">Welcome back! Please sign in to continue</p>
-        </div>
 
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-            <FormField
-              control={form.control}
-              name="email"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="text-gray-700 font-semibold">Email Address</FormLabel>
-                  <FormControl>
-                    <Input 
-                      placeholder="Enter your email" 
-                      {...field} 
-                      className="h-12 bg-white/80 border-2 border-gray-200 focus:border-red-400 focus:ring-red-200 rounded-lg transition-all duration-200"
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <FormField
-              control={form.control}
-              name="password"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="text-gray-700 font-semibold">Password</FormLabel>
-                  <FormControl>
-                    <Input 
-                      type="password" 
-                      placeholder="Enter your password" 
-                      {...field} 
-                      className="h-12 bg-white/80 border-2 border-gray-200 focus:border-red-400 focus:ring-red-200 rounded-lg transition-all duration-200"
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            <Button 
-              type="submit" 
-              className="w-full h-12 bg-gradient-to-r from-red-500 to-pink-600 hover:from-red-600 hover:to-pink-700 text-white font-semibold rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-[1.02]" 
-              disabled={isSubmitting}
+          <div>
+            <Button
+              type="submit"
+              disabled={loading || !captchaToken}
+              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
             >
-              {isSubmitting ? (
-                <div className="flex items-center space-x-2">
-                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
-                  <span>Signing in...</span>
-                </div>
-              ) : (
-                'Sign In'
-              )}
+              {loading ? 'Signing in...' : 'Sign in'}
             </Button>
-          </form>
-        </Form>
+          </div>
 
-        <div className="text-center mt-6">
-          <p className="text-sm text-gray-600">
-            Don't have an account? 
-            <a href="/register" className="text-red-600 hover:text-red-700 font-semibold ml-1 hover:underline transition-colors">
-              Register here
-            </a>
-          </p>
-        </div>
+          <div className="text-center">
+            <Link 
+              to="/forgot-password" 
+              className="text-indigo-600 hover:text-indigo-500 text-sm"
+            >
+              Forgot your password?
+            </Link>
+          </div>
+
+          <div className="text-center">
+            <span className="text-gray-600">Don't have an account? </span>
+            <Link 
+              to="/register" 
+              className="text-indigo-600 hover:text-indigo-500"
+            >
+              Sign up
+            </Link>
+          </div>
+        </form>
       </div>
     </div>
   );

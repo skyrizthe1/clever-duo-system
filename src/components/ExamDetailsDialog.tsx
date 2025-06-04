@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import {
   Dialog,
@@ -10,9 +11,8 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar"
-import { CalendarIcon, ClockIcon } from 'lucide-react';
+import { CalendarIcon } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { cn } from "@/lib/utils"
 import { format } from "date-fns"
@@ -22,29 +22,31 @@ import { Card, CardContent } from "@/components/ui/card"
 
 interface ExamDetailsDialogProps {
   exam: any;
-  questions: any[];
+  questions?: any[];
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  isCreating: boolean;
-  isEditing: boolean;
-  onCreateExam: (examData: any) => void;
-  onUpdateExam: (examData: any) => void;
-  onCloseCreate: () => void;
-  onCloseEdit: () => void;
-  editingExam: any;
+  isCreating?: boolean;
+  isEditing?: boolean;
+  onCreateExam?: (examData: any) => void;
+  onUpdateExam?: (examData: any) => void;
+  onCloseCreate?: () => void;
+  onCloseEdit?: () => void;
+  onStartExam?: () => void;
+  editingExam?: any;
 }
 
 export const ExamDetailsDialog: React.FC<ExamDetailsDialogProps> = ({
   exam,
-  questions,
+  questions = [],
   open,
   onOpenChange,
-  isCreating,
-  isEditing,
+  isCreating = false,
+  isEditing = false,
   onCreateExam,
   onUpdateExam,
   onCloseCreate,
   onCloseEdit,
+  onStartExam,
   editingExam
 }) => {
   const [title, setTitle] = useState('');
@@ -86,22 +88,22 @@ export const ExamDetailsDialog: React.FC<ExamDetailsDialogProps> = ({
       published,
     };
 
-    if (isCreating) {
+    if (isCreating && onCreateExam) {
       onCreateExam(examData);
       onOpenChange(false);
-      onCloseCreate();
-    } else if (isEditing) {
+      if (onCloseCreate) onCloseCreate();
+    } else if (isEditing && onUpdateExam) {
       onUpdateExam(examData);
       onOpenChange(false);
-      onCloseEdit();
+      if (onCloseEdit) onCloseEdit();
     }
   };
 
   const handleClose = () => {
     onOpenChange(false);
-    if (isCreating) {
+    if (isCreating && onCloseCreate) {
       onCloseCreate();
-    } else if (isEditing) {
+    } else if (isEditing && onCloseEdit) {
       onCloseEdit();
     }
   };
@@ -116,11 +118,15 @@ export const ExamDetailsDialog: React.FC<ExamDetailsDialogProps> = ({
     });
   };
 
+  const isViewOnly = !isCreating && !isEditing;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[80%]">
         <DialogHeader>
-          <DialogTitle>{isCreating ? 'Create Exam' : isEditing ? 'Edit Exam' : 'Exam Details'}</DialogTitle>
+          <DialogTitle>
+            {isCreating ? 'Create Exam' : isEditing ? 'Edit Exam' : 'Exam Details'}
+          </DialogTitle>
           <DialogDescription>
             {isCreating
               ? 'Create a new exam by filling out the details below.'
@@ -139,7 +145,7 @@ export const ExamDetailsDialog: React.FC<ExamDetailsDialogProps> = ({
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               className="col-span-3"
-              disabled={!isCreating && !isEditing}
+              disabled={isViewOnly}
             />
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
@@ -151,7 +157,7 @@ export const ExamDetailsDialog: React.FC<ExamDetailsDialogProps> = ({
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               className="col-span-3"
-              disabled={!isCreating && !isEditing}
+              disabled={isViewOnly}
             />
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
@@ -164,7 +170,7 @@ export const ExamDetailsDialog: React.FC<ExamDetailsDialogProps> = ({
               value={String(duration)}
               onChange={(e) => setDuration(Number(e.target.value))}
               className="col-span-3"
-              disabled={!isCreating && !isEditing}
+              disabled={isViewOnly}
             />
           </div>
           <div className="grid grid-cols-4 items-center gap-4">
@@ -179,7 +185,7 @@ export const ExamDetailsDialog: React.FC<ExamDetailsDialogProps> = ({
                     "col-span-3 flex justify-start text-left font-normal",
                     !startTime && "text-muted-foreground"
                   )}
-                  disabled={!isCreating && !isEditing}
+                  disabled={isViewOnly}
                 >
                   <CalendarIcon className="mr-2 h-4 w-4" />
                   {startTime ? format(startTime, "PPP p") : <span>Pick a date and time</span>}
@@ -190,7 +196,7 @@ export const ExamDetailsDialog: React.FC<ExamDetailsDialogProps> = ({
                   mode="single"
                   selected={startTime}
                   onSelect={setStartTime}
-                  disabled={(!isCreating && !isEditing) || undefined}
+                  disabled={isViewOnly || undefined}
                   initialFocus
                 />
               </PopoverContent>
@@ -208,7 +214,7 @@ export const ExamDetailsDialog: React.FC<ExamDetailsDialogProps> = ({
                     "col-span-3 flex justify-start text-left font-normal",
                     !endTime && "text-muted-foreground"
                   )}
-                  disabled={!isCreating && !isEditing}
+                  disabled={isViewOnly}
                 >
                   <CalendarIcon className="mr-2 h-4 w-4" />
                   {endTime ? format(endTime, "PPP p") : <span>Pick a date and time</span>}
@@ -219,40 +225,44 @@ export const ExamDetailsDialog: React.FC<ExamDetailsDialogProps> = ({
                   mode="single"
                   selected={endTime}
                   onSelect={setEndTime}
-                  disabled={(!isCreating && !isEditing) || undefined}
+                  disabled={isViewOnly || undefined}
                   initialFocus
                 />
               </PopoverContent>
             </Popover>
           </div>
 
-          <div className="grid grid-cols-4 items-start gap-4">
-            <Label className="text-right mt-2">Questions</Label>
-            <div className="col-span-3 space-y-2">
-              <p className="text-sm text-muted-foreground">Select questions for the exam:</p>
-              <Card className="border-none shadow-none">
-                <CardContent className="p-0">
-                  <ScrollArea className="h-[200px] w-full rounded-md border">
-                    <div className="p-4">
-                      {questions.map((question) => (
-                        <div key={question.id} className="flex items-center space-x-2 py-1">
-                          <Checkbox
-                            id={`question-${question.id}`}
-                            checked={selectedQuestions.includes(question.id)}
-                            onCheckedChange={() => handleQuestionSelect(question.id)}
-                            disabled={!isCreating && !isEditing}
-                          />
-                          <Label htmlFor={`question-${question.id}`} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                            {question.content.length > 50 ? `${question.content.substring(0, 50)}...` : question.content}
-                          </Label>
-                        </div>
-                      ))}
-                    </div>
-                  </ScrollArea>
-                </CardContent>
-              </Card>
+          {questions.length > 0 && (
+            <div className="grid grid-cols-4 items-start gap-4">
+              <Label className="text-right mt-2">Questions</Label>
+              <div className="col-span-3 space-y-2">
+                <p className="text-sm text-muted-foreground">
+                  {isViewOnly ? 'Selected questions:' : 'Select questions for the exam:'}
+                </p>
+                <Card className="border-none shadow-none">
+                  <CardContent className="p-0">
+                    <ScrollArea className="h-[200px] w-full rounded-md border">
+                      <div className="p-4">
+                        {questions.map((question) => (
+                          <div key={question.id} className="flex items-center space-x-2 py-1">
+                            <Checkbox
+                              id={`question-${question.id}`}
+                              checked={selectedQuestions.includes(question.id)}
+                              onCheckedChange={() => handleQuestionSelect(question.id)}
+                              disabled={isViewOnly}
+                            />
+                            <Label htmlFor={`question-${question.id}`} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                              {question.content.length > 50 ? `${question.content.substring(0, 50)}...` : question.content}
+                            </Label>
+                          </div>
+                        ))}
+                      </div>
+                    </ScrollArea>
+                  </CardContent>
+                </Card>
+              </div>
             </div>
-          </div>
+          )}
 
           {(isCreating || isEditing) && (
             <div className="grid grid-cols-4 items-center gap-4">
@@ -264,7 +274,7 @@ export const ExamDetailsDialog: React.FC<ExamDetailsDialogProps> = ({
                   id="published"
                   checked={published}
                   onCheckedChange={(checked) => setPublished(!!checked)}
-                  disabled={!isCreating && !isEditing}
+                  disabled={isViewOnly}
                 />
                 <Label htmlFor="published" className="ml-2 text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
                   Make this exam public
@@ -275,8 +285,13 @@ export const ExamDetailsDialog: React.FC<ExamDetailsDialogProps> = ({
         </div>
         <DialogFooter>
           <Button type="button" variant="secondary" onClick={handleClose}>
-            Cancel
+            {isViewOnly ? 'Close' : 'Cancel'}
           </Button>
+          {onStartExam && isViewOnly && (
+            <Button type="button" onClick={onStartExam}>
+              Start Exam
+            </Button>
+          )}
           {(isCreating || isEditing) && (
             <Button type="submit" onClick={handleSubmit}>
               {isCreating ? 'Create' : 'Update'}
