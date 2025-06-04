@@ -1,5 +1,4 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Header } from '@/components/Header';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getExams, getCurrentUser, createExam, updateExam, deleteExam, getQuestions } from '@/services/api';
@@ -11,14 +10,30 @@ import { Badge } from '@/components/ui/badge';
 import { CalendarIcon, Clock, Users, FileText, Plus, Edit, Trash2 } from 'lucide-react';
 import { ExamDetailsDialog } from '@/components/ExamDetailsDialog';
 import { toast } from 'sonner';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 
 const Exams = () => {
   const [selectedExam, setSelectedExam] = useState(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [editingExam, setEditingExam] = useState(null);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   
   const queryClient = useQueryClient();
+
+  // Handle URL parameters
+  useEffect(() => {
+    const action = searchParams.get('action');
+    if (action === 'create') {
+      console.log('Opening create exam dialog from URL parameter');
+      setIsCreating(true);
+      setDetailsOpen(true);
+      // Remove the action parameter from URL
+      searchParams.delete('action');
+      setSearchParams(searchParams);
+    }
+  }, [searchParams, setSearchParams]);
 
   const { data: exams = [], isLoading } = useQuery({
     queryKey: ['exams'],
@@ -105,6 +120,12 @@ const Exams = () => {
     updateMutation.mutate({ id: editingExam.id, updates });
   };
 
+  const handleCreateClick = () => {
+    console.log('Create exam button clicked');
+    setIsCreating(true);
+    setDetailsOpen(true);
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex flex-col bg-background">
@@ -126,7 +147,7 @@ const Exams = () => {
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-2xl font-bold">Exams</h1>
           {canManageExams && (
-            <Button onClick={() => setIsCreating(true)}>
+            <Button onClick={handleCreateClick}>
               <Plus className="h-4 w-4 mr-2" />
               Create Exam
             </Button>
