@@ -19,7 +19,6 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { QuestionDialog } from '@/components/QuestionDialog';
 import { Dialog } from '@/components/ui/dialog';
-import { QuestionImportExport } from '@/components/QuestionImportExport';
 
 const Questions = () => {
   const { toast } = useToast();
@@ -148,17 +147,6 @@ const Questions = () => {
     }
   };
   
-  const handleImportQuestions = async (importedQuestions: Omit<Question, 'id'>[]) => {
-    try {
-      for (const question of importedQuestions) {
-        await createMutation.mutateAsync(question);
-      }
-      // Don't show additional toast here since createMutation already shows one
-    } catch (error) {
-      console.error('Failed to import questions:', error);
-    }
-  };
-  
   const filteredQuestions = questions.filter(q => {
     let matches = q.content.toLowerCase().includes(searchTerm.toLowerCase());
     if (filter && q.type !== filter) {
@@ -182,7 +170,19 @@ const Questions = () => {
     const shuffled = [...questions].sort(() => 0.5 - Math.random());
     const selected = shuffled.slice(0, Math.min(10, questions.length));
     
-    console.log("Generated random exam with questions:", selected.map(q => q.id));
+    const examData = {
+      title: "Random Exam",
+      description: "Automatically generated exam",
+      duration: 60,
+      startTime: new Date(),
+      endTime: new Date(new Date().getTime() + 7 * 24 * 60 * 60 * 1000), // One week from now
+      questions: selected.map(q => q.id),
+      createdBy: "current-user-id", // This would be replaced with actual user ID
+      published: false
+    };
+    
+    // In a real application, we would send this to the backend
+    console.log("Generated random exam:", examData);
     toast({
       title: "Exam Generated",
       description: "Random exam created with " + selected.length + " questions"
@@ -199,10 +199,9 @@ const Questions = () => {
             <Button onClick={handleCreateNewQuestion}>
               <Plus className="mr-2 h-4 w-4" /> New Question
             </Button>
-            <QuestionImportExport 
-              questions={questions}
-              onImport={handleImportQuestions}
-            />
+            <Button variant="outline" onClick={exportQuestionsToPDF}>
+              <FileDown className="mr-2 h-4 w-4" /> Export PDF
+            </Button>
             <Button variant="outline" onClick={generateRandomExam}>
               Generate Random Exam
             </Button>

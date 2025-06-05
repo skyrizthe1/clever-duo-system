@@ -405,106 +405,84 @@ export async function getQuestions(): Promise<Question[]> {
   }
 }
 
-export const createQuestion = async (data: Omit<Question, 'id'>): Promise<Question> => {
+export async function createQuestion(question: Omit<Question, "id">): Promise<Question> {
   try {
-    console.log('Creating question with data:', data);
-    
-    // Map the frontend question types to database enum values
-    const typeMapping = {
-      'single-choice': 'single-choice',
-      'multiple-choice': 'multiple-choice',
-      'fill-blank': 'fill-blank',
-      'short-answer': 'short-answer'
-    } as const;
-    
-    const dbData = {
-      type: typeMapping[data.type as keyof typeof typeMapping] || 'single-choice',
-      content: data.content,
-      options: data.options || null,
-      correct_answer: data.correctAnswer,
-      points: data.points,
-      category: data.category,
-      created_by: data.createdBy,
-    };
-    
-    const { data: question, error } = await supabase
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('User not authenticated');
+
+    const { data, error } = await supabase
       .from('questions')
-      .insert([dbData])
+      .insert({
+        type: question.type,
+        content: question.content,
+        options: question.options,
+        correct_answer: question.correctAnswer,
+        points: question.points,
+        category: question.category,
+        created_by: user.id,
+      })
       .select()
       .single();
 
-    if (error) {
-      console.error('Create question error:', error);
-      throw error;
-    }
+    if (error) throw error;
 
-    console.log('Question created successfully:', question);
-    
-    // Map back to frontend format
+    toast.success("Question created successfully");
     return {
-      ...question,
-      type: question.type as 'single-choice' | 'multiple-choice' | 'fill-blank' | 'short-answer',
-      createdBy: question.created_by,
-      correctAnswer: question.correct_answer
-    } as Question;
+      id: data.id,
+      type: data.type,
+      content: data.content,
+      options: data.options || undefined,
+      correctAnswer: Array.isArray(data.correct_answer) ? 
+        data.correct_answer.map(item => String(item)) : 
+        String(data.correct_answer),
+      points: data.points,
+      category: data.category,
+      createdBy: data.created_by,
+    };
   } catch (error) {
-    console.error('Error creating question:', error);
+    console.error('Create question error:', error);
+    toast.error("Failed to create question");
     throw error;
   }
-};
+}
 
-export const updateQuestion = async (id: string, data: Partial<Question>): Promise<Question> => {
+export async function updateQuestion(id: string, updates: Partial<Question>): Promise<Question> {
   try {
-    console.log('Updating question with data:', data);
-    
-    // Map the frontend question types to database enum values
-    const typeMapping = {
-      'single-choice': 'single_choice',
-      'multiple-choice': 'multiple_choice',
-      'fill-blank': 'fill_blank',
-      'short-answer': 'short_answer'
-    };
-    
-    const dbData: any = { ...data };
-    
-    if (data.type) {
-      dbData.type = typeMapping[data.type as keyof typeof typeMapping] || data.type;
-    }
-    if (data.createdBy) {
-      dbData.created_by = data.createdBy;
-      delete dbData.createdBy;
-    }
-    if (data.correctAnswer) {
-      dbData.correct_answer = data.correctAnswer;
-      delete dbData.correctAnswer;
-    }
-    
-    const { data: question, error } = await supabase
+    const { data, error } = await supabase
       .from('questions')
-      .update(dbData)
+      .update({
+        type: updates.type,
+        content: updates.content,
+        options: updates.options,
+        correct_answer: updates.correctAnswer,
+        points: updates.points,
+        category: updates.category,
+      })
       .eq('id', id)
       .select()
       .single();
 
-    if (error) {
-      console.error('Update question error:', error);
-      throw error;
-    }
+    if (error) throw error;
 
-    console.log('Question updated successfully:', question);
-    
-    // Map back to frontend format
+    toast.success("Question updated successfully");
     return {
-      ...question,
-      type: Object.keys(typeMapping).find(key => typeMapping[key as keyof typeof typeMapping] === question.type) || question.type,
-      createdBy: question.created_by,
-      correctAnswer: question.correct_answer
-    } as Question;
+      id: data.id,
+      type: data.type,
+      content: data.content,
+      options: data.options || undefined,
+      correctAnswer: Array.isArray(data.correct_answer) ? 
+        data.correct_answer.map(item => String(item)) : 
+        String(data.correct_answer),
+      points: data.points,
+      category: data.category,
+      createdBy: data.created_by,
+    };
   } catch (error) {
-    console.error('Error updating question:', error);
+    console.error('Update question error:', error);
+    toast.error("Failed to update question");
     throw error;
   }
-};
+}
 
 export async function deleteQuestion(id: string): Promise<void> {
   try {
@@ -522,54 +500,6 @@ export async function deleteQuestion(id: string): Promise<void> {
     throw error;
   }
 }
-
-export const createQuestionsFromData = async (questions: Omit<Question, 'id'>[]): Promise<Question[]> => {
-  try {
-    console.log('Creating questions from data:', questions);
-    
-    // Map the frontend question types to database enum values
-    const typeMapping = {
-      'single-choice': 'single-choice',
-      'multiple-choice': 'multiple-choice',
-      'fill-blank': 'fill-blank',
-      'short-answer': 'short-answer'
-    } as const;
-    
-    // Transform questions to match database schema
-    const dbQuestions = questions.map(q => ({
-      type: typeMapping[q.type as keyof typeof typeMapping] || 'single-choice',
-      content: q.content,
-      options: q.options || null,
-      correct_answer: q.correctAnswer,
-      points: q.points,
-      category: q.category,
-      created_by: q.createdBy,
-    }));
-    
-    const { data, error } = await supabase
-      .from('questions')
-      .insert(dbQuestions)
-      .select();
-
-    if (error) {
-      console.error('Bulk create questions error:', error);
-      throw error;
-    }
-
-    console.log('Questions created successfully:', data);
-    
-    // Map back to frontend format
-    return data.map(question => ({
-      ...question,
-      type: question.type as 'single-choice' | 'multiple-choice' | 'fill-blank' | 'short-answer',
-      createdBy: question.created_by,
-      correctAnswer: question.correct_answer
-    })) as Question[];
-  } catch (error) {
-    console.error('Error creating questions:', error);
-    throw error;
-  }
-};
 
 // Exam management with Supabase
 export async function getExams(): Promise<Exam[]> {
@@ -804,43 +734,6 @@ export async function gradeSubmission(submissionId: string, score: number, feedb
   } catch (error) {
     console.error('Grade submission error:', error);
     toast.error("Failed to grade submission");
-    throw error;
-  }
-}
-
-// Add new password recovery function
-export async function requestPasswordReset(email: string): Promise<void> {
-  try {
-    console.log('Requesting password reset for:', email);
-    
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/reset-password`,
-    });
-
-    if (error) throw error;
-    
-    toast.success("Password reset email sent! Check your inbox.");
-  } catch (error) {
-    console.error('Password reset error:', error);
-    toast.error(error.message || "Failed to send password reset email");
-    throw error;
-  }
-}
-
-export async function updatePassword(newPassword: string): Promise<void> {
-  try {
-    console.log('Updating password');
-    
-    const { error } = await supabase.auth.updateUser({
-      password: newPassword
-    });
-
-    if (error) throw error;
-    
-    toast.success("Password updated successfully!");
-  } catch (error) {
-    console.error('Password update error:', error);
-    toast.error(error.message || "Failed to update password");
     throw error;
   }
 }

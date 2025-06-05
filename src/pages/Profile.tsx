@@ -8,10 +8,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
-import { Camera, Mail, User, Shield, Settings, Bell, Lock } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -19,7 +15,18 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogClose
 } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Switch } from '@/components/ui/switch';
 
 const Profile = () => {
@@ -30,7 +37,7 @@ const Profile = () => {
 
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
-  const [profileImage, setProfileImage] = useState<string | null>(null);
+  const [isPrivacyOpen, setIsPrivacyOpen] = useState(false);
   const [passwordData, setPasswordData] = useState({
     currentPassword: '',
     newPassword: '',
@@ -42,9 +49,16 @@ const Profile = () => {
     gradeNotifications: true,
     systemUpdates: false,
   });
+  const [privacySettings, setPrivacySettings] = useState({
+    showProfileToOthers: true,
+    allowDataCollection: true,
+    shareActivityWithTeachers: true,
+  });
 
   const handleProfileUpdate = (e: React.FormEvent) => {
     e.preventDefault();
+    // This would typically update the user profile
+    // For now, we'll just show a toast notification
     toast.success('Profile updated successfully');
   };
 
@@ -78,20 +92,15 @@ const Profile = () => {
     }));
   };
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        setProfileImage(event.target?.result as string);
-        toast.success('Profile picture updated');
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
   const handleNotificationToggle = (setting: keyof typeof notificationSettings) => {
     setNotificationSettings(prev => ({
+      ...prev,
+      [setting]: !prev[setting]
+    }));
+  };
+
+  const handlePrivacyToggle = (setting: keyof typeof privacySettings) => {
+    setPrivacySettings(prev => ({
       ...prev,
       [setting]: !prev[setting]
     }));
@@ -102,22 +111,9 @@ const Profile = () => {
     setIsNotificationsOpen(false);
   };
 
-  const getRoleColor = (role: string) => {
-    switch (role) {
-      case 'admin': return 'bg-red-500';
-      case 'teacher': return 'bg-blue-500';
-      case 'student': return 'bg-green-500';
-      default: return 'bg-gray-500';
-    }
-  };
-
-  const getRoleIcon = (role: string) => {
-    switch (role) {
-      case 'admin': return Shield;
-      case 'teacher': return User;
-      case 'student': return User;
-      default: return User;
-    }
+  const savePrivacySettings = () => {
+    toast.success('Privacy settings updated');
+    setIsPrivacyOpen(false);
   };
 
   if (isLoading) {
@@ -125,160 +121,75 @@ const Profile = () => {
       <div className="min-h-screen flex flex-col bg-background">
         <Header />
         <main className="flex-1 flex items-center justify-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+          <p>Loading...</p>
         </main>
       </div>
     );
   }
 
-  const RoleIcon = getRoleIcon(currentUser?.role || '');
-
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-br from-blue-50 to-indigo-100">
+    <div className="min-h-screen flex flex-col bg-background">
       <Header />
-      <main className="flex-1 container mx-auto px-4 py-8">
-        {/* Profile Header */}
-        <div className="mb-8">
-          <Card className="relative overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-r from-blue-600 to-purple-600 opacity-10"></div>
-            <CardContent className="relative pt-6">
-              <div className="flex items-center space-x-6">
-                <div className="relative">
-                  <Avatar className="h-24 w-24 border-4 border-white shadow-lg">
-                    <AvatarImage src={profileImage || currentUser?.avatar} />
-                    <AvatarFallback className="text-2xl font-bold bg-gradient-to-br from-blue-500 to-purple-600 text-white">
-                      {currentUser?.name?.charAt(0)?.toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                  <label className="absolute bottom-0 right-0 bg-white rounded-full p-2 shadow-lg cursor-pointer hover:bg-gray-50 transition-colors">
-                    <Camera className="h-4 w-4 text-gray-600" />
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleImageUpload}
-                      className="hidden"
-                    />
-                  </label>
-                </div>
-                <div className="flex-1">
-                  <div className="flex items-center gap-3 mb-2">
-                    <h1 className="text-3xl font-bold text-gray-900">{currentUser?.name}</h1>
-                    <Badge className={`${getRoleColor(currentUser?.role || '')} text-white`}>
-                      <RoleIcon className="h-3 w-3 mr-1" />
-                      {currentUser?.role?.toUpperCase()}
-                    </Badge>
-                  </div>
-                  <div className="flex items-center text-gray-600">
-                    <Mail className="h-4 w-4 mr-2" />
-                    {currentUser?.email}
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Personal Information */}
-          <div className="lg:col-span-2">
-            <Card className="shadow-lg">
+      <main className="flex-1 container mx-auto px-4 py-6">
+        <h1 className="text-2xl font-bold mb-6">My Profile</h1>
+        
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="col-span-2">
+            <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <User className="h-5 w-5" />
-                  Personal Information
-                </CardTitle>
+                <CardTitle>Personal Information</CardTitle>
               </CardHeader>
               <CardContent>
-                <form onSubmit={handleProfileUpdate} className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <form onSubmit={handleProfileUpdate} className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="name">Full Name</Label>
-                      <Input 
-                        id="name" 
-                        defaultValue={currentUser?.name || ''} 
-                        className="border-gray-200 focus:border-blue-500"
-                      />
+                      <Label htmlFor="name">Name</Label>
+                      <Input id="name" defaultValue={currentUser?.name || ''} />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="email">Email Address</Label>
-                      <Input 
-                        id="email" 
-                        type="email" 
-                        defaultValue={currentUser?.email || ''} 
-                        readOnly 
-                        className="bg-gray-50 border-gray-200"
-                      />
+                      <Label htmlFor="email">Email</Label>
+                      <Input id="email" type="email" defaultValue={currentUser?.email || ''} readOnly />
                     </div>
                   </div>
                   
                   <div className="space-y-2">
                     <Label htmlFor="role">Role</Label>
-                    <Input 
-                      id="role" 
-                      defaultValue={currentUser?.role || ''} 
-                      readOnly 
-                      className="bg-gray-50 border-gray-200"
-                    />
+                    <Input id="role" defaultValue={currentUser?.role || ''} readOnly />
                   </div>
                   
-                  <Separator />
-                  
-                  <Button type="submit" className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
-                    Save Changes
-                  </Button>
+                  <Button type="submit" className="mt-4">Save Changes</Button>
                 </form>
               </CardContent>
             </Card>
           </div>
           
-          {/* Settings & Actions */}
-          <div className="space-y-6">
-            <Card className="shadow-lg">
+          <div>
+            <Card>
               <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Settings className="h-5 w-5" />
-                  Account Settings
-                </CardTitle>
+                <CardTitle>Account Settings</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <Button 
-                  className="w-full justify-start" 
+                  className="w-full" 
                   variant="outline"
                   onClick={() => setIsChangePasswordOpen(true)}
                 >
-                  <Lock className="h-4 w-4 mr-2" />
                   Change Password
                 </Button>
                 <Button 
-                  className="w-full justify-start" 
+                  className="w-full" 
                   variant="outline"
                   onClick={() => setIsNotificationsOpen(true)}
                 >
-                  <Bell className="h-4 w-4 mr-2" />
                   Notification Settings
                 </Button>
-              </CardContent>
-            </Card>
-
-            <Card className="shadow-lg">
-              <CardHeader>
-                <CardTitle>Quick Stats</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-600">Account Status</span>
-                  <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-                    Active
-                  </Badge>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-600">Member Since</span>
-                  <span className="text-sm font-medium">Jan 2024</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-600">Last Login</span>
-                  <span className="text-sm font-medium">Today</span>
-                </div>
+                <Button 
+                  className="w-full" 
+                  variant="outline"
+                  onClick={() => setIsPrivacyOpen(true)}
+                >
+                  Privacy Settings
+                </Button>
               </CardContent>
             </Card>
           </div>
@@ -403,6 +314,63 @@ const Profile = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Privacy Settings Dialog */}
+      <AlertDialog open={isPrivacyOpen} onOpenChange={setIsPrivacyOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Privacy Settings</AlertDialogTitle>
+            <AlertDialogDescription>
+              Manage your privacy preferences and data sharing options.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="py-4 space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label htmlFor="show-profile">Profile Visibility</Label>
+                <p className="text-sm text-muted-foreground">
+                  Allow other users to see your profile information
+                </p>
+              </div>
+              <Switch 
+                id="show-profile"
+                checked={privacySettings.showProfileToOthers}
+                onCheckedChange={() => handlePrivacyToggle('showProfileToOthers')}
+              />
+            </div>
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label htmlFor="data-collection">Data Collection</Label>
+                <p className="text-sm text-muted-foreground">
+                  Allow us to collect usage data to improve our services
+                </p>
+              </div>
+              <Switch 
+                id="data-collection"
+                checked={privacySettings.allowDataCollection}
+                onCheckedChange={() => handlePrivacyToggle('allowDataCollection')}
+              />
+            </div>
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label htmlFor="share-activity">Share Activity</Label>
+                <p className="text-sm text-muted-foreground">
+                  Allow teachers to view your learning activity
+                </p>
+              </div>
+              <Switch 
+                id="share-activity"
+                checked={privacySettings.shareActivityWithTeachers}
+                onCheckedChange={() => handlePrivacyToggle('shareActivityWithTeachers')}
+              />
+            </div>
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={savePrivacySettings}>Save Changes</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
