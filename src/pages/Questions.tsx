@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Header } from '@/components/Header';
@@ -7,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { QuestionForm } from '@/components/QuestionForm';
 import { useToast } from '@/components/ui/use-toast';
 import { Input } from '@/components/ui/input';
-import { Search, FileUp, FileDown, Plus, Filter } from 'lucide-react';
+import { Search, Plus, Filter } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { 
   DropdownMenu,
@@ -19,6 +20,8 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { QuestionDialog } from '@/components/QuestionDialog';
 import { Dialog } from '@/components/ui/dialog';
+import { ExcelImportExport } from '@/components/ExcelImportExport';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 const Questions = () => {
   const { toast } = useToast();
@@ -98,53 +101,9 @@ const Questions = () => {
     setSelectedQuestion(null);
     setIsFormDialogOpen(true);
   };
-  
-  // Function to export questions as PDF
-  const exportQuestionsToPDF = () => {
-    try {
-      // Create a simple text representation for PDF
-      let pdfContent = "QUESTION BANK\n\n";
-      
-      questions.forEach((question, index) => {
-        pdfContent += `Question ${index + 1}:\n`;
-        pdfContent += `Type: ${question.type}\n`;
-        pdfContent += `Category: ${question.category}\n`;
-        pdfContent += `Points: ${question.points}\n`;
-        pdfContent += `Content: ${question.content}\n`;
-        
-        if (question.options) {
-          pdfContent += `Options:\n`;
-          question.options.forEach((option, optIndex) => {
-            pdfContent += `  ${optIndex + 1}. ${option}\n`;
-          });
-        }
-        
-        pdfContent += `Correct Answer: ${Array.isArray(question.correctAnswer) ? question.correctAnswer.join(', ') : question.correctAnswer}\n`;
-        pdfContent += "\n" + "=".repeat(50) + "\n\n";
-      });
-      
-      // Create a blob and download
-      const blob = new Blob([pdfContent], { type: 'text/plain' });
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = 'questions-bank.txt';
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
-      
-      toast({
-        title: "Export successful",
-        description: "Questions exported as text file",
-      });
-    } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "Export failed",
-        description: "Failed to export questions",
-      });
-    }
+
+  const handleImportSuccess = () => {
+    queryClient.invalidateQueries({ queryKey: ['questions'] });
   };
   
   const filteredQuestions = questions.filter(q => {
@@ -154,40 +113,6 @@ const Questions = () => {
     }
     return matches;
   });
-  
-  // Function to generate random exam paper
-  const generateRandomExam = () => {
-    if (questions.length < 5) {
-      toast({
-        variant: "destructive", 
-        title: "Not enough questions",
-        description: "You need at least 5 questions to generate an exam paper"
-      });
-      return;
-    }
-    
-    // Randomly select 10 questions or all if less than 10
-    const shuffled = [...questions].sort(() => 0.5 - Math.random());
-    const selected = shuffled.slice(0, Math.min(10, questions.length));
-    
-    const examData = {
-      title: "Random Exam",
-      description: "Automatically generated exam",
-      duration: 60,
-      startTime: new Date(),
-      endTime: new Date(new Date().getTime() + 7 * 24 * 60 * 60 * 1000), // One week from now
-      questions: selected.map(q => q.id),
-      createdBy: "current-user-id", // This would be replaced with actual user ID
-      published: false
-    };
-    
-    // In a real application, we would send this to the backend
-    console.log("Generated random exam:", examData);
-    toast({
-      title: "Exam Generated",
-      description: "Random exam created with " + selected.length + " questions"
-    });
-  };
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -195,115 +120,123 @@ const Questions = () => {
       <main className="flex-1 container mx-auto px-4 py-6">
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-bold">Question Management</h1>
-          <div className="flex gap-2">
-            <Button onClick={handleCreateNewQuestion}>
-              <Plus className="mr-2 h-4 w-4" /> New Question
-            </Button>
-            <Button variant="outline" onClick={exportQuestionsToPDF}>
-              <FileDown className="mr-2 h-4 w-4" /> Export PDF
-            </Button>
-            <Button variant="outline" onClick={generateRandomExam}>
-              Generate Random Exam
-            </Button>
-          </div>
+          <Button onClick={handleCreateNewQuestion}>
+            <Plus className="mr-2 h-4 w-4" /> New Question
+          </Button>
         </div>
         
-        <div className="flex gap-4 mb-6">
-          <div className="relative flex-1">
-            <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search questions..."
-              className="pl-8"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline">
-                <Filter className="mr-2 h-4 w-4" /> Filter
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuLabel>Question Type</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => setFilter(null)}>
-                All Types
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setFilter('single-choice')}>
-                Single Choice
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setFilter('multiple-choice')}>
-                Multiple Choice
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setFilter('fill-blank')}>
-                Fill in the Blank
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setFilter('short-answer')}>
-                Short Answer
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-        
-        {isLoading ? (
-          <div className="flex justify-center p-10">
-            <p>Loading questions...</p>
-          </div>
-        ) : filteredQuestions.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredQuestions.map((question) => (
-              <Card key={question.id} className="h-full">
-                <CardHeader className="pb-2">
-                  <div className="flex justify-between">
-                    <Badge variant={
-                      question.type === 'single-choice' ? 'default' :
-                      question.type === 'multiple-choice' ? 'secondary' :
-                      question.type === 'fill-blank' ? 'outline' : 'destructive'
-                    }>
-                      {question.type === 'single-choice' ? 'Single Choice' :
-                       question.type === 'multiple-choice' ? 'Multiple Choice' :
-                       question.type === 'fill-blank' ? 'Fill in Blank' : 'Short Answer'}
-                    </Badge>
-                    <Badge variant="outline">{question.points} pts</Badge>
-                  </div>
-                  <CardTitle className="text-md mt-2">{question.content.length > 60 ? `${question.content.substring(0, 60)}...` : question.content}</CardTitle>
-                </CardHeader>
-                <CardContent className="pb-2">
-                  {question.type !== 'short-answer' && question.options && (
-                    <div className="text-sm text-muted-foreground">
-                      <p>Options: {question.options.length}</p>
-                    </div>
-                  )}
-                  <div className="text-sm mt-1">
-                    <span className="font-semibold">Category:</span> {question.category}
-                  </div>
-                </CardContent>
-                <CardFooter className="pt-0 flex justify-between">
-                  <Button variant="ghost" size="sm" onClick={() => openQuestionDialog(question)}>
-                    Preview
+        <Tabs defaultValue="questions" className="space-y-6">
+          <TabsList>
+            <TabsTrigger value="questions">Questions</TabsTrigger>
+            <TabsTrigger value="import-export">Import/Export</TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="questions" className="space-y-6">
+            <div className="flex gap-4 mb-6">
+              <div className="relative flex-1">
+                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search questions..."
+                  className="pl-8"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline">
+                    <Filter className="mr-2 h-4 w-4" /> Filter
                   </Button>
-                  <div>
-                    <Button variant="ghost" size="sm" onClick={() => openEditDialog(question)}>
-                      Edit
-                    </Button>
-                    <Button variant="ghost" size="sm" className="text-destructive" onClick={() => handleDeleteQuestion(question.id)}>
-                      Delete
-                    </Button>
-                  </div>
-                </CardFooter>
-              </Card>
-            ))}
-          </div>
-        ) : (
-          <div className="text-center p-10 bg-muted rounded-md">
-            <p className="text-xl mb-2">No questions found</p>
-            <p className="text-muted-foreground mb-4">
-              {filter ? 'No questions match your filter criteria.' : 'Add your first question to get started.'}
-            </p>
-            <Button onClick={handleCreateNewQuestion}>Create Question</Button>
-          </div>
-        )}
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuLabel>Question Type</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => setFilter(null)}>
+                    All Types
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setFilter('single-choice')}>
+                    Single Choice
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setFilter('multiple-choice')}>
+                    Multiple Choice
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setFilter('fill-blank')}>
+                    Fill in the Blank
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setFilter('short-answer')}>
+                    Short Answer
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+            
+            {isLoading ? (
+              <div className="flex justify-center p-10">
+                <p>Loading questions...</p>
+              </div>
+            ) : filteredQuestions.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {filteredQuestions.map((question) => (
+                  <Card key={question.id} className="h-full">
+                    <CardHeader className="pb-2">
+                      <div className="flex justify-between">
+                        <Badge variant={
+                          question.type === 'single-choice' ? 'default' :
+                          question.type === 'multiple-choice' ? 'secondary' :
+                          question.type === 'fill-blank' ? 'outline' : 'destructive'
+                        }>
+                          {question.type === 'single-choice' ? 'Single Choice' :
+                           question.type === 'multiple-choice' ? 'Multiple Choice' :
+                           question.type === 'fill-blank' ? 'Fill in Blank' : 'Short Answer'}
+                        </Badge>
+                        <Badge variant="outline">{question.points} pts</Badge>
+                      </div>
+                      <CardTitle className="text-md mt-2">{question.content.length > 60 ? `${question.content.substring(0, 60)}...` : question.content}</CardTitle>
+                    </CardHeader>
+                    <CardContent className="pb-2">
+                      {question.type !== 'short-answer' && question.options && (
+                        <div className="text-sm text-muted-foreground">
+                          <p>Options: {question.options.length}</p>
+                        </div>
+                      )}
+                      <div className="text-sm mt-1">
+                        <span className="font-semibold">Category:</span> {question.category}
+                      </div>
+                    </CardContent>
+                    <CardFooter className="pt-0 flex justify-between">
+                      <Button variant="ghost" size="sm" onClick={() => openQuestionDialog(question)}>
+                        Preview
+                      </Button>
+                      <div>
+                        <Button variant="ghost" size="sm" onClick={() => openEditDialog(question)}>
+                          Edit
+                        </Button>
+                        <Button variant="ghost" size="sm" className="text-destructive" onClick={() => handleDeleteQuestion(question.id)}>
+                          Delete
+                        </Button>
+                      </div>
+                    </CardFooter>
+                  </Card>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center p-10 bg-muted rounded-md">
+                <p className="text-xl mb-2">No questions found</p>
+                <p className="text-muted-foreground mb-4">
+                  {filter ? 'No questions match your filter criteria.' : 'Add your first question to get started.'}
+                </p>
+                <Button onClick={handleCreateNewQuestion}>Create Question</Button>
+              </div>
+            )}
+          </TabsContent>
+          
+          <TabsContent value="import-export">
+            <ExcelImportExport 
+              questions={questions} 
+              onImportSuccess={handleImportSuccess}
+            />
+          </TabsContent>
+        </Tabs>
       </main>
       
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
