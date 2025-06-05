@@ -151,9 +151,14 @@ ${percentage >= 60 ? 'Congratulations on your achievement!' : 'Keep studying and
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
               <h4 className="font-semibold text-blue-800 mb-2">Teacher Feedback</h4>
               <div className="space-y-2 text-sm text-blue-700">
-                {Object.entries(submission.feedback).map(([questionId, feedback], index) => (
-                  <p key={questionId}>• Question {index + 1}: {feedback}</p>
-                ))}
+                {Object.entries(submission.feedback).map(([questionId, feedback], index) => {
+                  // Only display feedback entries that are actual feedback, not metadata
+                  if (questionId === 'total_points' || questionId === 'individual_scores') return null;
+                  
+                  return (
+                    <p key={questionId}>• Question {index + 1}: {String(feedback)}</p>
+                  );
+                })}
               </div>
             </div>
           )}

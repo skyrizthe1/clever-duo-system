@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Header } from '@/components/Header';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -94,8 +93,8 @@ const Grading = () => {
         const maxPoints = question?.points || 10;
         
         // If already graded, use existing scores, otherwise default to 0
-        initialPoints[questionId] = submission.graded && submission.feedback ? 
-          String(submission.individual_scores?.[questionId] || 0) : '';
+        initialPoints[questionId] = submission.graded && submission.individual_scores ? 
+          String(submission.individual_scores[questionId] || 0) : '';
         initialFeedback[questionId] = submission.graded && submission.feedback ? 
           submission.feedback[questionId] || '' : '';
       });
@@ -136,7 +135,7 @@ const Grading = () => {
       feedbackData: {
         ...feedback,
         total_points: String(totalPossiblePoints),
-        individual_scores: points
+        individual_scores: JSON.stringify(points)
       }
     });
   };

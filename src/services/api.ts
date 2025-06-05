@@ -1,4 +1,3 @@
-
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -66,9 +65,11 @@ export interface ExamSubmission {
   submitted_at: Date;
   graded: boolean;
   score?: number;
+  total_points?: number;
   answers: Record<string, any>;
   time_spent: number;
   feedback?: Record<string, string>;
+  individual_scores?: Record<string, number>;
 }
 
 // Auth utility functions
@@ -755,9 +756,11 @@ export async function getExamSubmissions(): Promise<ExamSubmission[]> {
       submitted_at: new Date(sub.submitted_at!),
       graded: sub.graded || false,
       score: sub.score || undefined,
+      total_points: sub.total_points || undefined,
       answers: sub.answers as Record<string, any>,
       time_spent: sub.time_spent || 0,
       feedback: sub.feedback as Record<string, string> | undefined,
+      individual_scores: sub.individual_scores as Record<string, number> | undefined,
     }));
   } catch (error) {
     console.error('Get exam submissions error:', error);
@@ -768,13 +771,27 @@ export async function getExamSubmissions(): Promise<ExamSubmission[]> {
 
 export async function gradeSubmission(submissionId: string, score: number, feedback?: Record<string, string>): Promise<ExamSubmission> {
   try {
+    const updateData: any = {
+      score,
+      graded: true,
+    };
+
+    if (feedback) {
+      updateData.feedback = feedback;
+      
+      // Extract total_points and individual_scores if they exist in feedback
+      if (feedback.total_points) {
+        updateData.total_points = parseInt(feedback.total_points);
+      }
+      
+      if (feedback.individual_scores) {
+        updateData.individual_scores = JSON.parse(feedback.individual_scores);
+      }
+    }
+
     const { data, error } = await supabase
       .from('exam_submissions')
-      .update({
-        score,
-        feedback: feedback as any,
-        graded: true,
-      })
+      .update(updateData)
       .eq('id', submissionId)
       .select(`
         *,
@@ -795,9 +812,11 @@ export async function gradeSubmission(submissionId: string, score: number, feedb
       submitted_at: new Date(data.submitted_at!),
       graded: data.graded || false,
       score: data.score || undefined,
+      total_points: data.total_points || undefined,
       answers: data.answers as Record<string, any>,
       time_spent: data.time_spent || 0,
       feedback: data.feedback as Record<string, string> | undefined,
+      individual_scores: data.individual_scores as Record<string, number> | undefined,
     };
   } catch (error) {
     console.error('Grade submission error:', error);
