@@ -1,3 +1,4 @@
+
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -528,16 +529,16 @@ export const createQuestionsFromData = async (questions: Omit<Question, 'id'>[])
     console.log('Creating questions from data:', questions);
     
     // Map the frontend question types to database enum values
-    const typeMapping = {
-      'single-choice': 'single_choice',
-      'multiple-choice': 'multiple_choice',
-      'fill-blank': 'fill_blank',
-      'short-answer': 'short_answer'
+    const typeMapping: Record<string, "single-choice" | "multiple-choice" | "fill-blank" | "short-answer"> = {
+      'single-choice': 'single-choice',
+      'multiple-choice': 'multiple-choice',
+      'fill-blank': 'fill-blank',
+      'short-answer': 'short-answer'
     };
     
     // Transform questions to match database schema
     const dbQuestions = questions.map(q => ({
-      type: typeMapping[q.type as keyof typeof typeMapping] || q.type,
+      type: typeMapping[q.type] || 'single-choice' as "single-choice" | "multiple-choice" | "fill-blank" | "short-answer",
       content: q.content,
       options: q.options || null,
       correct_answer: q.correctAnswer,
@@ -561,7 +562,7 @@ export const createQuestionsFromData = async (questions: Omit<Question, 'id'>[])
     // Map back to frontend format
     return data.map(question => ({
       ...question,
-      type: Object.keys(typeMapping).find(key => typeMapping[key as keyof typeof typeMapping] === question.type) || question.type,
+      type: question.type as 'single-choice' | 'multiple-choice' | 'fill-blank' | 'short-answer',
       createdBy: question.created_by,
       correctAnswer: question.correct_answer
     })) as Question[];
