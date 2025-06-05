@@ -55,7 +55,7 @@ const Login = () => {
       
     } catch (error) {
       console.error('Login error:', error);
-      toast.error('Login failed. Please check your credentials.');
+      // Don't show duplicate toast, login function already shows error
     } finally {
       setIsSubmitting(false);
     }

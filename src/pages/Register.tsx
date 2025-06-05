@@ -74,7 +74,7 @@ const Register = () => {
       
     } catch (error) {
       console.error('Registration error:', error);
-      toast.error('Registration failed. Please try again.');
+      // Don't show duplicate toast, registerUser function already shows error
     } finally {
       setIsSubmitting(false);
     }

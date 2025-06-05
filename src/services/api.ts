@@ -1,3 +1,4 @@
+
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -70,11 +71,45 @@ export interface ExamSubmission {
   feedback?: Record<string, string>;
 }
 
+// Auth utility functions
+const cleanupAuthState = () => {
+  try {
+    // Remove all Supabase auth keys from localStorage
+    Object.keys(localStorage).forEach((key) => {
+      if (key.startsWith('supabase.auth.') || key.includes('sb-')) {
+        localStorage.removeItem(key);
+      }
+    });
+    
+    // Remove from sessionStorage if available
+    if (typeof sessionStorage !== 'undefined') {
+      Object.keys(sessionStorage).forEach((key) => {
+        if (key.startsWith('supabase.auth.') || key.includes('sb-')) {
+          sessionStorage.removeItem(key);
+        }
+      });
+    }
+  } catch (error) {
+    console.log('Auth cleanup completed');
+  }
+};
+
 // User Registration with Supabase
 export async function registerUser(userData: RegisterUserData): Promise<User> {
   try {
     console.log('Registering user with Supabase:', userData.email);
     
+    // Clean up any existing auth state first
+    cleanupAuthState();
+    
+    // Attempt to sign out any existing session
+    try {
+      await supabase.auth.signOut({ scope: 'global' });
+    } catch (err) {
+      // Continue even if this fails
+      console.log('No existing session to sign out');
+    }
+
     const { data, error } = await supabase.auth.signUp({
       email: userData.email,
       password: userData.password,
@@ -82,15 +117,17 @@ export async function registerUser(userData: RegisterUserData): Promise<User> {
         data: {
           name: userData.name,
           role: userData.role,
-        },
-        emailRedirectTo: `${window.location.origin}/`
+        }
       }
     });
 
-    if (error) throw error;
+    if (error) {
+      console.error('Registration error:', error);
+      throw error;
+    }
 
     if (data.user) {
-      toast.success("Registration successful! Please check your email to verify your account.");
+      console.log('Registration successful:', data.user.id);
       return {
         id: data.user.id,
         name: userData.name,
@@ -99,10 +136,11 @@ export async function registerUser(userData: RegisterUserData): Promise<User> {
       };
     }
 
-    throw new Error('Registration failed');
+    throw new Error('Registration failed - no user returned');
   } catch (error) {
     console.error('Registration error:', error);
-    toast.error(error.message || "Registration failed");
+    const errorMessage = error?.message || "Registration failed";
+    toast.error(errorMessage);
     throw error;
   }
 }
@@ -112,68 +150,85 @@ export async function login(email: string, password: string): Promise<User> {
   try {
     console.log('Attempting login with Supabase for:', email);
     
+    // Clean up any existing auth state first
+    cleanupAuthState();
+    
+    // Attempt to sign out any existing session
+    try {
+      await supabase.auth.signOut({ scope: 'global' });
+    } catch (err) {
+      // Continue even if this fails
+      console.log('No existing session to sign out');
+    }
+
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
 
-    if (error) throw error;
+    if (error) {
+      console.error('Login error:', error);
+      throw error;
+    }
 
-    if (data.user) {
-      console.log('Login successful:', data.user);
+    if (data.user && data.session) {
+      console.log('Login successful:', data.user.id);
       
-      // Get user profile from profiles table
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', data.user.id)
-        .single();
-
-      if (profileError) {
-        console.error('Profile fetch error:', profileError);
-        // If profile doesn't exist, create one
-        const { error: insertError } = await supabase
+      // Get or create user profile
+      let profile = null;
+      try {
+        const { data: existingProfile, error: profileError } = await supabase
           .from('profiles')
-          .insert({
-            id: data.user.id,
-            name: data.user.user_metadata?.name || data.user.email?.split('@')[0] || 'User',
-            role: data.user.user_metadata?.role || 'student'
-          });
-        
-        if (!insertError) {
-          const { data: newProfile } = await supabase
+          .select('*')
+          .eq('id', data.user.id)
+          .single();
+
+        if (profileError && profileError.code !== 'PGRST116') {
+          console.error('Profile fetch error:', profileError);
+        } else if (existingProfile) {
+          profile = existingProfile;
+        }
+      } catch (err) {
+        console.log('Profile lookup completed');
+      }
+
+      // If no profile exists, create one
+      if (!profile) {
+        try {
+          const { data: newProfile, error: insertError } = await supabase
             .from('profiles')
-            .select('*')
-            .eq('id', data.user.id)
+            .insert({
+              id: data.user.id,
+              name: data.user.user_metadata?.name || data.user.email?.split('@')[0] || 'User',
+              role: data.user.user_metadata?.role || 'student'
+            })
+            .select()
             .single();
           
-          if (newProfile) {
-            toast.success("Login successful!");
-            return {
-              id: newProfile.id,
-              name: newProfile.name,
-              email: data.user.email!,
-              role: newProfile.role,
-            };
+          if (!insertError && newProfile) {
+            profile = newProfile;
           }
+        } catch (err) {
+          console.log('Profile creation attempted');
         }
       }
 
-      if (profile) {
-        toast.success("Login successful!");
-        return {
-          id: profile.id,
-          name: profile.name,
-          email: data.user.email!,
-          role: profile.role,
-        };
-      }
+      const userName = profile?.name || data.user.user_metadata?.name || data.user.email?.split('@')[0] || 'User';
+      const userRole = profile?.role || data.user.user_metadata?.role || 'student';
+
+      return {
+        id: data.user.id,
+        name: userName,
+        email: data.user.email!,
+        role: userRole,
+      };
     }
 
-    throw new Error('Login failed');
+    throw new Error('Login failed - no session returned');
   } catch (error) {
     console.error('Login error:', error);
-    toast.error(error.message || "Invalid credentials");
+    const errorMessage = error?.message || "Invalid credentials";
+    toast.error(errorMessage);
     throw error;
   }
 }
@@ -182,15 +237,19 @@ export async function login(email: string, password: string): Promise<User> {
 export async function logout(): Promise<void> {
   try {
     console.log('Logging out user with Supabase');
-    const { error } = await supabase.auth.signOut();
     
-    if (error) throw error;
+    // Clean up auth state first
+    cleanupAuthState();
     
-    console.log('Logout successful');
-    toast.success("Logged out successfully");
+    const { error } = await supabase.auth.signOut({ scope: 'global' });
+    
+    if (error) {
+      console.error('Logout error:', error);
+    }
+    
+    console.log('Logout completed');
   } catch (error) {
     console.error('Logout error:', error);
-    toast.success("Logged out successfully");
   }
 }
 
@@ -204,24 +263,33 @@ export async function getCurrentUser(): Promise<User | null> {
       return null;
     }
     
-    console.log('Getting current user profile');
-    const { data: profile, error: profileError } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', user.id)
-      .single();
+    console.log('Getting current user profile for:', user.id);
+    
+    // Get user profile
+    let profile = null;
+    try {
+      const { data: existingProfile, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
 
-    if (profileError || !profile) {
-      console.error('Profile fetch error:', profileError);
-      return null;
+      if (!profileError && existingProfile) {
+        profile = existingProfile;
+      }
+    } catch (err) {
+      console.log('Profile lookup completed');
     }
 
-    console.log('Current user profile:', profile);
+    const userName = profile?.name || user.user_metadata?.name || user.email?.split('@')[0] || 'User';
+    const userRole = profile?.role || user.user_metadata?.role || 'student';
+
+    console.log('Current user profile loaded:', userName);
     return {
-      id: profile.id,
-      name: profile.name,
+      id: user.id,
+      name: userName,
       email: user.email!,
-      role: profile.role,
+      role: userRole,
     };
   } catch (error) {
     console.error('Get current user error:', error);
