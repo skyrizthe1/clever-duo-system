@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { Header } from '@/components/Header';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { getExams, getCurrentUser, getExamSubmissions, gradeSubmission } from '@/services/api';
+import { getExams, getCurrentUser, getExamSubmissions, gradeSubmission, getQuestions } from '@/services/api';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -40,6 +40,11 @@ const Grading = () => {
     queryFn: getExams
   });
   
+  const { data: questions = [] } = useQuery({
+    queryKey: ['questions'],
+    queryFn: getQuestions
+  });
+  
   const { data: currentUser } = useQuery({
     queryKey: ['currentUser'],
     queryFn: getCurrentUser
@@ -55,6 +60,7 @@ const Grading = () => {
       gradeSubmission(submissionId, grade, feedbackData),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['examSubmissions'] });
+      queryClient.invalidateQueries({ queryKey: ['submissions'] });
       setGradingOpen(false);
       toast.success('Grades saved successfully');
     }
@@ -82,11 +88,16 @@ const Grading = () => {
     
     const exam = exams.find(e => e.id === submission.exam_id);
     if (exam) {
-      exam.questions.forEach(questionId => {
+      exam.questions.forEach((questionId, index) => {
+        // Get the actual question to determine max points
+        const question = questions.find(q => q.id === questionId);
+        const maxPoints = question?.points || 10;
+        
+        // If already graded, use existing scores, otherwise default to 0
         initialPoints[questionId] = submission.graded && submission.feedback ? 
-          String(Math.floor(Math.random() * 10)) : '';
+          String(submission.individual_scores?.[questionId] || 0) : '';
         initialFeedback[questionId] = submission.graded && submission.feedback ? 
-          submission.feedback[questionId] || 'Good work on this question.' : '';
+          submission.feedback[questionId] || '' : '';
       });
     }
     
@@ -98,12 +109,35 @@ const Grading = () => {
   const handleSaveGrading = () => {
     if (!selectedSubmission) return;
     
-    const totalPoints = Object.values(points).reduce((sum, p) => sum + (parseInt(p) || 0), 0);
+    // Calculate total points awarded
+    const totalPointsAwarded = Object.values(points).reduce((sum, p) => sum + (parseInt(p) || 0), 0);
+    
+    // Calculate total possible points
+    const exam = exams.find(e => e.id === selectedSubmission.exam_id);
+    let totalPossiblePoints = 100; // default
+    
+    if (exam) {
+      totalPossiblePoints = exam.questions.reduce((sum, questionId) => {
+        const question = questions.find(q => q.id === questionId);
+        return sum + (question?.points || 10);
+      }, 0);
+    }
+    
+    console.log('Grading details:', {
+      totalPointsAwarded,
+      totalPossiblePoints,
+      individual_scores: points,
+      feedback
+    });
     
     gradeMutation.mutate({
       submissionId: selectedSubmission.id,
-      grade: totalPoints,
-      feedbackData: feedback
+      grade: totalPointsAwarded,
+      feedbackData: {
+        ...feedback,
+        total_points: String(totalPossiblePoints),
+        individual_scores: points
+      }
     });
   };
   
@@ -206,7 +240,7 @@ const Grading = () => {
         )}
         
         <Dialog open={gradingOpen} onOpenChange={setGradingOpen}>
-          <DialogContent className="max-w-3xl">
+          <DialogContent className="max-w-4xl">
             <DialogHeader>
               <DialogTitle>
                 {exams.find(e => e.id === selectedSubmission?.exam_id)?.title} - {selectedSubmission?.student_name}
@@ -218,14 +252,17 @@ const Grading = () => {
             
             <div className="space-y-4 max-h-[60vh] overflow-y-auto py-2">
               {selectedSubmission && exams.find(e => e.id === selectedSubmission.exam_id)?.questions.map((questionId, index) => {
+                const question = questions.find(q => q.id === questionId);
                 const studentAnswer = selectedSubmission.answers[questionId] || 'No answer';
+                const maxPoints = question?.points || 10;
                 
                 return (
                   <Card key={questionId}>
                     <CardContent className="pt-4">
                       <div className="mb-2">
                         <h3 className="font-medium">Question {index + 1}</h3>
-                        <p className="text-muted-foreground text-sm">Question ID: {questionId}</p>
+                        <p className="text-sm font-medium text-blue-600">{question?.content || 'Question not found'}</p>
+                        <p className="text-xs text-muted-foreground">Max Points: {maxPoints}</p>
                       </div>
                       
                       <div className="mb-4 p-3 bg-gray-50 rounded-md">
@@ -236,15 +273,16 @@ const Grading = () => {
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                           <label htmlFor={`points-${questionId}`} className="text-sm font-medium mb-1 block">
-                            Points
+                            Points (out of {maxPoints})
                           </label>
                           <Input 
                             id={`points-${questionId}`}
                             type="number"
                             min="0"
+                            max={maxPoints}
                             value={points[questionId] || ''}
                             onChange={(e) => setPoints({...points, [questionId]: e.target.value})}
-                            placeholder="Enter points"
+                            placeholder={`0-${maxPoints}`}
                           />
                         </div>
                         
@@ -265,6 +303,24 @@ const Grading = () => {
                   </Card>
                 );
               })}
+              
+              {selectedSubmission && (
+                <Card className="bg-blue-50">
+                  <CardContent className="pt-4">
+                    <div className="text-center">
+                      <h3 className="font-medium text-blue-800">Total Score</h3>
+                      <p className="text-2xl font-bold text-blue-600">
+                        {Object.values(points).reduce((sum, p) => sum + (parseInt(p) || 0), 0)}
+                        {' / '}
+                        {exams.find(e => e.id === selectedSubmission.exam_id)?.questions.reduce((sum, questionId) => {
+                          const question = questions.find(q => q.id === questionId);
+                          return sum + (question?.points || 10);
+                        }, 0) || 100}
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
             </div>
             
             <DialogFooter>

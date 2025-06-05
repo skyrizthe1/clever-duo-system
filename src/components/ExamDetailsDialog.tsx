@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Calendar, Clock, BookOpen, User } from 'lucide-react';
 import { Exam, Question } from '@/services/api';
+import { QuestionSelector } from './QuestionSelector';
 
 interface ExamDetailsDialogProps {
   exam: Exam | null;
@@ -45,10 +46,10 @@ export function ExamDetailsDialog({
     start_time: '',
     end_time: '',
     published: false,
-    questions: []
+    questions: [] as string[]
   });
 
-  // Initialize form data when editing
+  // Initialize form data when editing or creating
   React.useEffect(() => {
     if (isEditing && editingExam) {
       setFormData({
@@ -75,6 +76,11 @@ export function ExamDetailsDialog({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (formData.questions.length === 0) {
+      alert('Please select at least one question for the exam.');
+      return;
+    }
+    
     if (isCreating && onCreateExam) {
       onCreateExam(formData);
     } else if (isEditing && onUpdateExam) {
@@ -92,11 +98,15 @@ export function ExamDetailsDialog({
     }
   };
 
+  const handleQuestionSelectionChange = (questionIds: string[]) => {
+    setFormData(prev => ({ ...prev, questions: questionIds }));
+  };
+
   // If we're creating or editing, show the form
   if (isCreating || isEditing) {
     return (
       <Dialog open={open} onOpenChange={handleClose}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{isCreating ? 'Create New Exam' : 'Edit Exam'}</DialogTitle>
             <DialogDescription>
@@ -104,15 +114,28 @@ export function ExamDetailsDialog({
             </DialogDescription>
           </DialogHeader>
           
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <Label htmlFor="title">Title</Label>
-              <Input
-                id="title"
-                value={formData.title}
-                onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
-                required
-              />
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="title">Title</Label>
+                <Input
+                  id="title"
+                  value={formData.title}
+                  onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
+                  required
+                />
+              </div>
+              
+              <div>
+                <Label htmlFor="duration">Duration (minutes)</Label>
+                <Input
+                  id="duration"
+                  type="number"
+                  value={formData.duration}
+                  onChange={(e) => setFormData(prev => ({ ...prev, duration: parseInt(e.target.value) }))}
+                  required
+                />
+              </div>
             </div>
             
             <div>
@@ -149,17 +172,6 @@ export function ExamDetailsDialog({
               </div>
             </div>
             
-            <div>
-              <Label htmlFor="duration">Duration (minutes)</Label>
-              <Input
-                id="duration"
-                type="number"
-                value={formData.duration}
-                onChange={(e) => setFormData(prev => ({ ...prev, duration: parseInt(e.target.value) }))}
-                required
-              />
-            </div>
-            
             <div className="flex items-center gap-2">
               <input
                 type="checkbox"
@@ -168,6 +180,13 @@ export function ExamDetailsDialog({
                 onChange={(e) => setFormData(prev => ({ ...prev, published: e.target.checked }))}
               />
               <Label htmlFor="published">Published</Label>
+            </div>
+
+            <div>
+              <QuestionSelector
+                selectedQuestions={formData.questions}
+                onSelectionChange={handleQuestionSelectionChange}
+              />
             </div>
             
             <div className="flex gap-3 justify-end">

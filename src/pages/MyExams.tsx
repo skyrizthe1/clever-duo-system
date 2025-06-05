@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Header } from '@/components/Header';
 import { useQuery } from '@tanstack/react-query';
@@ -12,6 +13,7 @@ import { ExamTaking } from '@/components/ExamTaking';
 
 const MyExams = () => {
   const [selectedExam, setSelectedExam] = useState(null);
+  const [selectedSubmission, setSelectedSubmission] = useState(null);
   const [detailsOpen, setDetailsOpen] = useState(false);
   const [resultsOpen, setResultsOpen] = useState(false);
   const [examTakingOpen, setExamTakingOpen] = useState(false);
@@ -50,6 +52,10 @@ const MyExams = () => {
   const hasSubmission = (examId: string) => {
     return submissions.some(sub => sub.exam_id === examId);
   };
+
+  const getSubmission = (examId: string) => {
+    return submissions.find(sub => sub.exam_id === examId);
+  };
   
   // Categorize exams
   const upcomingExams = sortedExams.filter(
@@ -77,7 +83,9 @@ const MyExams = () => {
   };
 
   const handleViewResults = (exam) => {
+    const submission = getSubmission(exam.id);
     setSelectedExam(exam);
+    setSelectedSubmission(submission);
     setResultsOpen(true);
   };
 
@@ -185,33 +193,39 @@ const MyExams = () => {
           <>
             <h2 className="text-xl font-semibold mt-8 mb-4">Completed Exams</h2>
             <div className="space-y-4">
-              {pastExams.map((exam) => (
-                <Card key={exam.id} className="opacity-80">
-                  <CardHeader>
-                    <div className="flex items-center justify-between">
-                      <CardTitle>{exam.title}</CardTitle>
-                      <Badge variant="outline" className="bg-gray-100">Completed</Badge>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex items-center gap-4">
-                      <div>
-                        <p className="text-xs text-muted-foreground">Date</p>
-                        <p>{new Date(exam.start_time).toLocaleDateString()}</p>
+              {pastExams.map((exam) => {
+                const submission = getSubmission(exam.id);
+                const score = submission?.score || 0;
+                const totalPoints = submission?.total_points || 100;
+                
+                return (
+                  <Card key={exam.id} className="opacity-80">
+                    <CardHeader>
+                      <div className="flex items-center justify-between">
+                        <CardTitle>{exam.title}</CardTitle>
+                        <Badge variant="outline" className="bg-gray-100">Completed</Badge>
                       </div>
-                      <div>
-                        <p className="text-xs text-muted-foreground">Score</p>
-                        <p>85/100</p>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="flex items-center gap-4">
+                        <div>
+                          <p className="text-xs text-muted-foreground">Date</p>
+                          <p>{new Date(exam.start_time).toLocaleDateString()}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-muted-foreground">Score</p>
+                          <p>{submission?.graded ? `${score}/${totalPoints}` : 'Pending'}</p>
+                        </div>
                       </div>
-                    </div>
-                  </CardContent>
-                  <CardFooter>
-                    <Button variant="outline" className="w-full" onClick={() => handleViewResults(exam)}>
-                      View Results
-                    </Button>
-                  </CardFooter>
-                </Card>
-              ))}
+                    </CardContent>
+                    <CardFooter>
+                      <Button variant="outline" className="w-full" onClick={() => handleViewResults(exam)}>
+                        View Results
+                      </Button>
+                    </CardFooter>
+                  </Card>
+                );
+              })}
             </div>
           </>
         )}
@@ -237,6 +251,7 @@ const MyExams = () => {
 
         <ExamResultsDialog
           exam={selectedExam}
+          submission={selectedSubmission}
           open={resultsOpen}
           onOpenChange={setResultsOpen}
         />

@@ -26,6 +26,7 @@ import { ExamResultsDialog } from '@/components/ExamResultsDialog';
 
 const Results = () => {
   const [selectedExam, setSelectedExam] = useState(null);
+  const [selectedSubmission, setSelectedSubmission] = useState(null);
   const [resultsOpen, setResultsOpen] = useState(false);
 
   const { data: exams = [] } = useQuery({
@@ -44,7 +45,7 @@ const Results = () => {
     return exam ? {
       ...exam,
       submission: submission,
-      score: submission.score || Math.floor(Math.random() * 100),
+      score: submission.score || 0,
       status: submission.graded ? 'graded' : 'pending'
     } : null;
   }).filter(Boolean);
@@ -56,8 +57,9 @@ const Results = () => {
     average: 70 // Mock average score
   }));
 
-  const handleViewDetails = (exam) => {
-    setSelectedExam(exam);
+  const handleViewDetails = (result) => {
+    setSelectedExam(result);
+    setSelectedSubmission(result.submission);
     setResultsOpen(true);
   };
   
@@ -109,7 +111,7 @@ const Results = () => {
                         <TableCell>{new Date(result.submission.submitted_at).toLocaleDateString()}</TableCell>
                         <TableCell>
                           {result.status === 'graded' ? 
-                            `${result.score}/100` : 
+                            `${result.score}/${result.submission.total_points || 100}` : 
                             'Pending'
                           }
                         </TableCell>
@@ -143,6 +145,7 @@ const Results = () => {
 
         <ExamResultsDialog
           exam={selectedExam}
+          submission={selectedSubmission}
           open={resultsOpen}
           onOpenChange={setResultsOpen}
         />
