@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Header } from '@/components/Header';
@@ -5,9 +6,9 @@ import { createQuestion, deleteQuestion, getQuestions, Question, updateQuestion 
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { QuestionForm } from '@/components/QuestionForm';
-import { useToast } from '@/components/ui/use-toast';
+import { toast } from 'sonner';
 import { Input } from '@/components/ui/input';
-import { Search, FileUp, FileDown, Plus, Filter } from 'lucide-react';
+import { Search, Plus, Filter } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { 
   DropdownMenu,
@@ -19,9 +20,9 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { QuestionDialog } from '@/components/QuestionDialog';
 import { Dialog } from '@/components/ui/dialog';
+import { ExcelImportExport } from '@/components/ExcelImportExport';
 
 const Questions = () => {
-  const { toast } = useToast();
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState('');
   const [filter, setFilter] = useState<string | null>(null);
@@ -38,11 +39,12 @@ const Questions = () => {
     mutationFn: createQuestion,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['questions'] });
-      toast({
-        title: "Question created",
-        description: "Question was created successfully",
-      });
+      toast.success('Question created successfully');
       setIsFormDialogOpen(false);
+    },
+    onError: (error) => {
+      console.error('Create question error:', error);
+      toast.error('Failed to create question');
     }
   });
   
@@ -51,11 +53,12 @@ const Questions = () => {
       updateQuestion(id, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['questions'] });
-      toast({
-        title: "Question updated",
-        description: "Question was updated successfully",
-      });
+      toast.success('Question updated successfully');
       setIsFormDialogOpen(false);
+    },
+    onError: (error) => {
+      console.error('Update question error:', error);
+      toast.error('Failed to update question');
     }
   });
   
@@ -63,10 +66,11 @@ const Questions = () => {
     mutationFn: deleteQuestion,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['questions'] });
-      toast({
-        title: "Question deleted",
-        description: "Question was deleted successfully",
-      });
+      toast.success('Question deleted successfully');
+    },
+    onError: (error) => {
+      console.error('Delete question error:', error);
+      toast.error('Failed to delete question');
     }
   });
   
@@ -99,52 +103,8 @@ const Questions = () => {
     setIsFormDialogOpen(true);
   };
   
-  // Function to export questions as PDF
-  const exportQuestionsToPDF = () => {
-    try {
-      // Create a simple text representation for PDF
-      let pdfContent = "QUESTION BANK\n\n";
-      
-      questions.forEach((question, index) => {
-        pdfContent += `Question ${index + 1}:\n`;
-        pdfContent += `Type: ${question.type}\n`;
-        pdfContent += `Category: ${question.category}\n`;
-        pdfContent += `Points: ${question.points}\n`;
-        pdfContent += `Content: ${question.content}\n`;
-        
-        if (question.options) {
-          pdfContent += `Options:\n`;
-          question.options.forEach((option, optIndex) => {
-            pdfContent += `  ${optIndex + 1}. ${option}\n`;
-          });
-        }
-        
-        pdfContent += `Correct Answer: ${Array.isArray(question.correctAnswer) ? question.correctAnswer.join(', ') : question.correctAnswer}\n`;
-        pdfContent += "\n" + "=".repeat(50) + "\n\n";
-      });
-      
-      // Create a blob and download
-      const blob = new Blob([pdfContent], { type: 'text/plain' });
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = 'questions-bank.txt';
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
-      
-      toast({
-        title: "Export successful",
-        description: "Questions exported as text file",
-      });
-    } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "Export failed",
-        description: "Failed to export questions",
-      });
-    }
+  const handleImportSuccess = () => {
+    queryClient.invalidateQueries({ queryKey: ['questions'] });
   };
   
   const filteredQuestions = questions.filter(q => {
@@ -154,40 +114,6 @@ const Questions = () => {
     }
     return matches;
   });
-  
-  // Function to generate random exam paper
-  const generateRandomExam = () => {
-    if (questions.length < 5) {
-      toast({
-        variant: "destructive", 
-        title: "Not enough questions",
-        description: "You need at least 5 questions to generate an exam paper"
-      });
-      return;
-    }
-    
-    // Randomly select 10 questions or all if less than 10
-    const shuffled = [...questions].sort(() => 0.5 - Math.random());
-    const selected = shuffled.slice(0, Math.min(10, questions.length));
-    
-    const examData = {
-      title: "Random Exam",
-      description: "Automatically generated exam",
-      duration: 60,
-      startTime: new Date(),
-      endTime: new Date(new Date().getTime() + 7 * 24 * 60 * 60 * 1000), // One week from now
-      questions: selected.map(q => q.id),
-      createdBy: "current-user-id", // This would be replaced with actual user ID
-      published: false
-    };
-    
-    // In a real application, we would send this to the backend
-    console.log("Generated random exam:", examData);
-    toast({
-      title: "Exam Generated",
-      description: "Random exam created with " + selected.length + " questions"
-    });
-  };
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -199,12 +125,10 @@ const Questions = () => {
             <Button onClick={handleCreateNewQuestion}>
               <Plus className="mr-2 h-4 w-4" /> New Question
             </Button>
-            <Button variant="outline" onClick={exportQuestionsToPDF}>
-              <FileDown className="mr-2 h-4 w-4" /> Export PDF
-            </Button>
-            <Button variant="outline" onClick={generateRandomExam}>
-              Generate Random Exam
-            </Button>
+            <ExcelImportExport 
+              onImportSuccess={handleImportSuccess}
+              questions={questions}
+            />
           </div>
         </div>
         
