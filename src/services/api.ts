@@ -523,6 +523,54 @@ export async function deleteQuestion(id: string): Promise<void> {
   }
 }
 
+export const createQuestionsFromData = async (questions: Omit<Question, 'id'>[]): Promise<Question[]> => {
+  try {
+    console.log('Creating questions from data:', questions);
+    
+    // Map the frontend question types to database enum values
+    const typeMapping = {
+      'single-choice': 'single_choice',
+      'multiple-choice': 'multiple_choice',
+      'fill-blank': 'fill_blank',
+      'short-answer': 'short_answer'
+    };
+    
+    // Transform questions to match database schema
+    const dbQuestions = questions.map(q => ({
+      type: typeMapping[q.type as keyof typeof typeMapping] || q.type,
+      content: q.content,
+      options: q.options || null,
+      correct_answer: q.correctAnswer,
+      points: q.points,
+      category: q.category,
+      created_by: q.createdBy,
+    }));
+    
+    const { data, error } = await supabase
+      .from('questions')
+      .insert(dbQuestions)
+      .select();
+
+    if (error) {
+      console.error('Bulk create questions error:', error);
+      throw error;
+    }
+
+    console.log('Questions created successfully:', data);
+    
+    // Map back to frontend format
+    return data.map(question => ({
+      ...question,
+      type: Object.keys(typeMapping).find(key => typeMapping[key as keyof typeof typeMapping] === question.type) || question.type,
+      createdBy: question.created_by,
+      correctAnswer: question.correct_answer
+    })) as Question[];
+  } catch (error) {
+    console.error('Error creating questions:', error);
+    throw error;
+  }
+};
+
 // Exam management with Supabase
 export async function getExams(): Promise<Exam[]> {
   try {
