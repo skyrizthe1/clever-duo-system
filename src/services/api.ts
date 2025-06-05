@@ -1,4 +1,3 @@
-
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -412,21 +411,21 @@ export const createQuestion = async (data: Omit<Question, 'id'>): Promise<Questi
     
     // Map the frontend question types to database enum values
     const typeMapping = {
-      'single-choice': 'single_choice',
-      'multiple-choice': 'multiple_choice',
-      'fill-blank': 'fill_blank',
-      'short-answer': 'short_answer'
-    };
+      'single-choice': 'single-choice',
+      'multiple-choice': 'multiple-choice',
+      'fill-blank': 'fill-blank',
+      'short-answer': 'short-answer'
+    } as const;
     
     const dbData = {
-      ...data,
-      type: typeMapping[data.type as keyof typeof typeMapping] || data.type,
+      type: typeMapping[data.type as keyof typeof typeMapping] || 'single-choice',
+      content: data.content,
+      options: data.options || null,
+      correct_answer: data.correctAnswer,
+      points: data.points,
+      category: data.category,
       created_by: data.createdBy,
-      correct_answer: data.correctAnswer
     };
-    
-    delete (dbData as any).createdBy;
-    delete (dbData as any).correctAnswer;
     
     const { data: question, error } = await supabase
       .from('questions')
@@ -444,7 +443,7 @@ export const createQuestion = async (data: Omit<Question, 'id'>): Promise<Questi
     // Map back to frontend format
     return {
       ...question,
-      type: Object.keys(typeMapping).find(key => typeMapping[key as keyof typeof typeMapping] === question.type) || question.type,
+      type: question.type as 'single-choice' | 'multiple-choice' | 'fill-blank' | 'short-answer',
       createdBy: question.created_by,
       correctAnswer: question.correct_answer
     } as Question;
@@ -529,16 +528,16 @@ export const createQuestionsFromData = async (questions: Omit<Question, 'id'>[])
     console.log('Creating questions from data:', questions);
     
     // Map the frontend question types to database enum values
-    const typeMapping: Record<string, "single-choice" | "multiple-choice" | "fill-blank" | "short-answer"> = {
+    const typeMapping = {
       'single-choice': 'single-choice',
       'multiple-choice': 'multiple-choice',
       'fill-blank': 'fill-blank',
       'short-answer': 'short-answer'
-    };
+    } as const;
     
     // Transform questions to match database schema
     const dbQuestions = questions.map(q => ({
-      type: typeMapping[q.type] || 'single-choice' as "single-choice" | "multiple-choice" | "fill-blank" | "short-answer",
+      type: typeMapping[q.type as keyof typeof typeMapping] || 'single-choice',
       content: q.content,
       options: q.options || null,
       correct_answer: q.correctAnswer,
