@@ -16,10 +16,12 @@ export type Database = {
           feedback: Json | null
           graded: boolean | null
           id: string
+          individual_scores: Json | null
           score: number | null
           student_id: string
           submitted_at: string | null
           time_spent: number | null
+          total_points: number | null
         }
         Insert: {
           answers: Json
@@ -27,10 +29,12 @@ export type Database = {
           feedback?: Json | null
           graded?: boolean | null
           id?: string
+          individual_scores?: Json | null
           score?: number | null
           student_id: string
           submitted_at?: string | null
           time_spent?: number | null
+          total_points?: number | null
         }
         Update: {
           answers?: Json
@@ -38,10 +42,12 @@ export type Database = {
           feedback?: Json | null
           graded?: boolean | null
           id?: string
+          individual_scores?: Json | null
           score?: number | null
           student_id?: string
           submitted_at?: string | null
           time_spent?: number | null
+          total_points?: number | null
         }
         Relationships: [
           {
