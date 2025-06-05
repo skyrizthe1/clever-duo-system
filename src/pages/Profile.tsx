@@ -15,6 +15,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogClose
 } from '@/components/ui/dialog';
 import {
   AlertDialog,
@@ -27,8 +28,6 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { Switch } from '@/components/ui/switch';
-import { ProfilePictureUpload } from '@/components/ProfilePictureUpload';
-import { Settings, Bell, Shield, User, Mail, Calendar } from 'lucide-react';
 
 const Profile = () => {
   const { data: currentUser, isLoading } = useQuery({
@@ -39,11 +38,6 @@ const Profile = () => {
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isPrivacyOpen, setIsPrivacyOpen] = useState(false);
-  const [profileData, setProfileData] = useState({
-    name: currentUser?.name || '',
-    email: currentUser?.email || '',
-    avatarUrl: currentUser?.avatar_url || ''
-  });
   const [passwordData, setPasswordData] = useState({
     currentPassword: '',
     newPassword: '',
@@ -61,23 +55,11 @@ const Profile = () => {
     shareActivityWithTeachers: true,
   });
 
-  React.useEffect(() => {
-    if (currentUser) {
-      setProfileData({
-        name: currentUser.name || '',
-        email: currentUser.email || '',
-        avatarUrl: currentUser.avatar_url || ''
-      });
-    }
-  }, [currentUser]);
-
   const handleProfileUpdate = (e: React.FormEvent) => {
     e.preventDefault();
+    // This would typically update the user profile
+    // For now, we'll just show a toast notification
     toast.success('Profile updated successfully');
-  };
-
-  const handleAvatarChange = (url: string) => {
-    setProfileData(prev => ({ ...prev, avatarUrl: url }));
   };
 
   const handlePasswordChange = (e: React.FormEvent) => {
@@ -136,144 +118,76 @@ const Profile = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex flex-col bg-gradient-to-br from-gray-50 to-blue-50">
+      <div className="min-h-screen flex flex-col bg-background">
         <Header />
         <main className="flex-1 flex items-center justify-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+          <p>Loading...</p>
         </main>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-br from-gray-50 to-blue-50">
+    <div className="min-h-screen flex flex-col bg-background">
       <Header />
       <main className="flex-1 container mx-auto px-4 py-6">
-        <div className="max-w-6xl mx-auto">
-          <div className="flex items-center gap-3 mb-8">
-            <div className="p-3 bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl">
-              <User className="w-6 h-6 text-white" />
-            </div>
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">My Profile</h1>
-              <p className="text-gray-600">Manage your account settings and preferences</p>
-            </div>
-          </div>
-          
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            {/* Profile Picture Section */}
-            <div className="lg:col-span-1">
-              <ProfilePictureUpload 
-                currentAvatarUrl={profileData.avatarUrl}
-                onAvatarChange={handleAvatarChange}
-              />
-            </div>
-            
-            {/* Main Profile Information */}
-            <div className="lg:col-span-2">
-              <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm">
-                <CardHeader className="bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-t-lg">
-                  <CardTitle className="flex items-center gap-2">
-                    <User className="w-5 h-5" />
-                    Personal Information
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="p-6">
-                  <form onSubmit={handleProfileUpdate} className="space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div className="space-y-2">
-                        <Label htmlFor="name" className="text-gray-700 font-semibold">Full Name</Label>
-                        <div className="relative">
-                          <User className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                          <Input 
-                            id="name" 
-                            className="pl-10 border-2 border-gray-200 focus:border-blue-400 rounded-lg h-12"
-                            value={profileData.name}
-                            onChange={(e) => setProfileData(prev => ({ ...prev, name: e.target.value }))}
-                          />
-                        </div>
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="email" className="text-gray-700 font-semibold">Email Address</Label>
-                        <div className="relative">
-                          <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                          <Input 
-                            id="email" 
-                            type="email" 
-                            className="pl-10 border-2 border-gray-200 bg-gray-50 rounded-lg h-12"
-                            value={profileData.email}
-                            readOnly 
-                          />
-                        </div>
-                      </div>
-                    </div>
-                    
+        <h1 className="text-2xl font-bold mb-6">My Profile</h1>
+        
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="col-span-2">
+            <Card>
+              <CardHeader>
+                <CardTitle>Personal Information</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleProfileUpdate} className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="role" className="text-gray-700 font-semibold">Role</Label>
-                      <div className="relative">
-                        <Settings className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
-                        <Input 
-                          id="role" 
-                          className="pl-10 border-2 border-gray-200 bg-gray-50 rounded-lg h-12"
-                          value={currentUser?.role || ''} 
-                          readOnly 
-                        />
-                      </div>
+                      <Label htmlFor="name">Name</Label>
+                      <Input id="name" defaultValue={currentUser?.name || ''} />
                     </div>
-                    
-                    <div className="flex items-center gap-2 text-sm text-gray-500">
-                      <Calendar className="w-4 h-4" />
-                      <span>Member since {new Date(currentUser?.created_at || '').toLocaleDateString()}</span>
+                    <div className="space-y-2">
+                      <Label htmlFor="email">Email</Label>
+                      <Input id="email" type="email" defaultValue={currentUser?.email || ''} readOnly />
                     </div>
-                    
-                    <Button 
-                      type="submit" 
-                      className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 h-12 font-semibold"
-                    >
-                      Save Changes
-                    </Button>
-                  </form>
-                </CardContent>
-              </Card>
-            </div>
-          </div>
-          
-          {/* Settings Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
-            <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm hover:shadow-xl transition-shadow cursor-pointer" onClick={() => setIsChangePasswordOpen(true)}>
-              <CardContent className="p-6 text-center">
-                <div className="w-12 h-12 bg-gradient-to-br from-green-500 to-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Shield className="w-6 h-6 text-white" />
-                </div>
-                <h3 className="font-semibold text-gray-900 mb-2">Security</h3>
-                <p className="text-sm text-gray-600 mb-4">Change your password and security settings</p>
-                <Button variant="outline" className="w-full">
-                  Manage Security
-                </Button>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="role">Role</Label>
+                    <Input id="role" defaultValue={currentUser?.role || ''} readOnly />
+                  </div>
+                  
+                  <Button type="submit" className="mt-4">Save Changes</Button>
+                </form>
               </CardContent>
             </Card>
-            
-            <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm hover:shadow-xl transition-shadow cursor-pointer" onClick={() => setIsNotificationsOpen(true)}>
-              <CardContent className="p-6 text-center">
-                <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-red-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Bell className="w-6 h-6 text-white" />
-                </div>
-                <h3 className="font-semibold text-gray-900 mb-2">Notifications</h3>
-                <p className="text-sm text-gray-600 mb-4">Control how you receive notifications</p>
-                <Button variant="outline" className="w-full">
+          </div>
+          
+          <div>
+            <Card>
+              <CardHeader>
+                <CardTitle>Account Settings</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <Button 
+                  className="w-full" 
+                  variant="outline"
+                  onClick={() => setIsChangePasswordOpen(true)}
+                >
+                  Change Password
+                </Button>
+                <Button 
+                  className="w-full" 
+                  variant="outline"
+                  onClick={() => setIsNotificationsOpen(true)}
+                >
                   Notification Settings
                 </Button>
-              </CardContent>
-            </Card>
-            
-            <Card className="shadow-lg border-0 bg-white/80 backdrop-blur-sm hover:shadow-xl transition-shadow cursor-pointer" onClick={() => setIsPrivacyOpen(true)}>
-              <CardContent className="p-6 text-center">
-                <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-600 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Shield className="w-6 h-6 text-white" />
-                </div>
-                <h3 className="font-semibold text-gray-900 mb-2">Privacy</h3>
-                <p className="text-sm text-gray-600 mb-4">Manage your privacy and data preferences</p>
-                <Button variant="outline" className="w-full">
+                <Button 
+                  className="w-full" 
+                  variant="outline"
+                  onClick={() => setIsPrivacyOpen(true)}
+                >
                   Privacy Settings
                 </Button>
               </CardContent>

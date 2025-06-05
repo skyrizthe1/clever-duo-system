@@ -6,10 +6,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, Clock, BookOpen, User, Plus } from 'lucide-react';
-import { Exam, Question, getQuestions } from '@/services/api';
-import { QuestionSelector } from '@/components/QuestionSelector';
-import { useQuery } from '@tanstack/react-query';
+import { Calendar, Clock, BookOpen, User } from 'lucide-react';
+import { Exam, Question } from '@/services/api';
 
 interface ExamDetailsDialogProps {
   exam: Exam | null;
@@ -48,14 +46,6 @@ export function ExamDetailsDialog({
     end_time: '',
     published: false,
     questions: []
-  });
-  
-  const [isQuestionSelectorOpen, setIsQuestionSelectorOpen] = useState(false);
-  
-  const { data: allQuestions = [] } = useQuery({
-    queryKey: ['questions'],
-    queryFn: getQuestions,
-    enabled: isCreating || isEditing
   });
 
   // Initialize form data when editing
@@ -102,144 +92,95 @@ export function ExamDetailsDialog({
     }
   };
 
-  const handleQuestionsChange = (questionIds: string[]) => {
-    setFormData(prev => ({ ...prev, questions: questionIds }));
-  };
-
-  const getSelectedQuestionDetails = () => {
-    return allQuestions.filter(q => formData.questions.includes(q.id));
-  };
-
   // If we're creating or editing, show the form
   if (isCreating || isEditing) {
-    const selectedQuestionDetails = getSelectedQuestionDetails();
-    
     return (
-      <>
-        <Dialog open={open} onOpenChange={handleClose}>
-          <DialogContent className="max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>{isCreating ? 'Create New Exam' : 'Edit Exam'}</DialogTitle>
-              <DialogDescription>
-                {isCreating ? 'Fill in the details to create a new exam.' : 'Update the exam details.'}
-              </DialogDescription>
-            </DialogHeader>
+      <Dialog open={open} onOpenChange={handleClose}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>{isCreating ? 'Create New Exam' : 'Edit Exam'}</DialogTitle>
+            <DialogDescription>
+              {isCreating ? 'Fill in the details to create a new exam.' : 'Update the exam details.'}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <Label htmlFor="title">Title</Label>
+              <Input
+                id="title"
+                value={formData.title}
+                onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
+                required
+              />
+            </div>
             
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <Label htmlFor="description">Description</Label>
+              <Textarea
+                id="description"
+                value={formData.description}
+                onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                required
+              />
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="title">Title</Label>
+                <Label htmlFor="start_time">Start Time</Label>
                 <Input
-                  id="title"
-                  value={formData.title}
-                  onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
+                  id="start_time"
+                  type="datetime-local"
+                  value={formData.start_time}
+                  onChange={(e) => setFormData(prev => ({ ...prev, start_time: e.target.value }))}
                   required
                 />
               </div>
               
               <div>
-                <Label htmlFor="description">Description</Label>
-                <Textarea
-                  id="description"
-                  value={formData.description}
-                  onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                  required
-                />
-              </div>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="start_time">Start Time</Label>
-                  <Input
-                    id="start_time"
-                    type="datetime-local"
-                    value={formData.start_time}
-                    onChange={(e) => setFormData(prev => ({ ...prev, start_time: e.target.value }))}
-                    required
-                  />
-                </div>
-                
-                <div>
-                  <Label htmlFor="end_time">End Time</Label>
-                  <Input
-                    id="end_time"
-                    type="datetime-local"
-                    value={formData.end_time}
-                    onChange={(e) => setFormData(prev => ({ ...prev, end_time: e.target.value }))}
-                    required
-                  />
-                </div>
-              </div>
-              
-              <div>
-                <Label htmlFor="duration">Duration (minutes)</Label>
+                <Label htmlFor="end_time">End Time</Label>
                 <Input
-                  id="duration"
-                  type="number"
-                  value={formData.duration}
-                  onChange={(e) => setFormData(prev => ({ ...prev, duration: parseInt(e.target.value) }))}
+                  id="end_time"
+                  type="datetime-local"
+                  value={formData.end_time}
+                  onChange={(e) => setFormData(prev => ({ ...prev, end_time: e.target.value }))}
                   required
                 />
               </div>
-
-              <div>
-                <Label>Questions ({formData.questions.length} selected)</Label>
-                <div className="flex items-center gap-2 mt-2">
-                  <Button 
-                    type="button" 
-                    variant="outline" 
-                    onClick={() => setIsQuestionSelectorOpen(true)}
-                  >
-                    <Plus className="w-4 h-4 mr-2" />
-                    Select Questions
-                  </Button>
-                  {selectedQuestionDetails.length > 0 && (
-                    <Badge variant="secondary">
-                      {selectedQuestionDetails.reduce((sum, q) => sum + q.points, 0)} total points
-                    </Badge>
-                  )}
-                </div>
-                {selectedQuestionDetails.length > 0 && (
-                  <div className="mt-2 max-h-32 overflow-y-auto bg-gray-50 rounded p-2">
-                    {selectedQuestionDetails.map(q => (
-                      <div key={q.id} className="text-sm py-1 border-b last:border-b-0">
-                        <span className="font-medium">{q.content.substring(0, 50)}...</span>
-                        <span className="text-gray-500 ml-2">({q.points} pts)</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-              
-              <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  id="published"
-                  checked={formData.published}
-                  onChange={(e) => setFormData(prev => ({ ...prev, published: e.target.checked }))}
-                />
-                <Label htmlFor="published">Published</Label>
-              </div>
-              
-              <div className="flex gap-3 justify-end">
-                <Button type="button" variant="outline" onClick={handleClose}>
-                  Cancel
-                </Button>
-                <Button type="submit" disabled={formData.questions.length === 0}>
-                  {isCreating ? 'Create Exam' : 'Update Exam'}
-                </Button>
-              </div>
-            </form>
-          </DialogContent>
-        </Dialog>
-
-        <QuestionSelector
-          questions={allQuestions}
-          selectedQuestions={formData.questions}
-          onQuestionsChange={handleQuestionsChange}
-          open={isQuestionSelectorOpen}
-          onOpenChange={setIsQuestionSelectorOpen}
-        />
-      </>
+            </div>
+            
+            <div>
+              <Label htmlFor="duration">Duration (minutes)</Label>
+              <Input
+                id="duration"
+                type="number"
+                value={formData.duration}
+                onChange={(e) => setFormData(prev => ({ ...prev, duration: parseInt(e.target.value) }))}
+                required
+              />
+            </div>
+            
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="published"
+                checked={formData.published}
+                onChange={(e) => setFormData(prev => ({ ...prev, published: e.target.checked }))}
+              />
+              <Label htmlFor="published">Published</Label>
+            </div>
+            
+            <div className="flex gap-3 justify-end">
+              <Button type="button" variant="outline" onClick={handleClose}>
+                Cancel
+              </Button>
+              <Button type="submit">
+                {isCreating ? 'Create Exam' : 'Update Exam'}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
     );
   }
 
