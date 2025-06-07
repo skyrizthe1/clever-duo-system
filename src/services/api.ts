@@ -24,6 +24,11 @@ export interface User {
   email: string;
   avatar?: string;
   role: UserRole;
+  bio?: string;
+  slogan?: string;
+  phone?: string;
+  location?: string;
+  social_links?: Record<string, string>;
 }
 
 export interface RegisterUserData {
@@ -222,6 +227,12 @@ export async function login(email: string, password: string): Promise<User> {
         name: userName,
         email: data.user.email!,
         role: userRole,
+        avatar: profile?.avatar_url,
+        bio: profile?.bio,
+        slogan: profile?.slogan,
+        phone: profile?.phone,
+        location: profile?.location,
+        social_links: profile?.social_links,
       };
     }
 
@@ -266,7 +277,7 @@ export async function getCurrentUser(): Promise<User | null> {
     
     console.log('Getting current user profile for:', user.id);
     
-    // Get user profile
+    // Get user profile with all fields
     let profile = null;
     try {
       const { data: existingProfile, error: profileError } = await supabase
@@ -291,6 +302,12 @@ export async function getCurrentUser(): Promise<User | null> {
       name: userName,
       email: user.email!,
       role: userRole,
+      avatar: profile?.avatar_url,
+      bio: profile?.bio,
+      slogan: profile?.slogan,
+      phone: profile?.phone,
+      location: profile?.location,
+      social_links: profile?.social_links,
     };
   } catch (error) {
     console.error('Get current user error:', error);
@@ -298,529 +315,281 @@ export async function getCurrentUser(): Promise<User | null> {
   }
 }
 
-// Task management with Supabase
-export async function getTasks(): Promise<Task[]> {
-  try {
-    const { data, error } = await supabase
-      .from('tasks')
-      .select('*')
-      .order('created_at', { ascending: false });
-
-    if (error) throw error;
-
-    return data.map(task => ({
-      id: task.id,
-      title: task.title,
-      description: task.description || '',
-      status: task.status,
-      priority: task.priority,
-      createdAt: new Date(task.created_at!),
-      dueDate: task.due_date ? new Date(task.due_date) : undefined,
-      tags: task.tags || [],
-      assignedTo: task.assigned_to || undefined,
-    }));
-  } catch (error) {
-    console.error('Get tasks error:', error);
-    toast.error("Failed to fetch tasks");
-    throw error;
-  }
-}
-
-export async function createTask(task: Omit<Task, "id" | "createdAt">): Promise<Task> {
-  try {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('User not authenticated');
-
-    const { data, error } = await supabase
-      .from('tasks')
-      .insert({
-        title: task.title,
-        description: task.description,
-        status: task.status,
-        priority: task.priority,
-        due_date: task.dueDate?.toISOString(),
-        tags: task.tags,
-        assigned_to: task.assignedTo,
-        created_by: user.id,
-      })
-      .select()
-      .single();
-
-    if (error) throw error;
-
-    toast.success("Task created successfully");
-    return {
-      id: data.id,
-      title: data.title,
-      description: data.description || '',
-      status: data.status,
-      priority: data.priority,
-      createdAt: new Date(data.created_at!),
-      dueDate: data.due_date ? new Date(data.due_date) : undefined,
-      tags: data.tags || [],
-      assignedTo: data.assigned_to || undefined,
-    };
-  } catch (error) {
-    console.error('Create task error:', error);
-    toast.error("Failed to create task");
-    throw error;
-  }
-}
-
-export async function updateTask(id: string, updates: Partial<Task>): Promise<Task> {
-  try {
-    const { data, error } = await supabase
-      .from('tasks')
-      .update({
-        title: updates.title,
-        description: updates.description,
-        status: updates.status,
-        priority: updates.priority,
-        due_date: updates.dueDate?.toISOString(),
-        tags: updates.tags,
-        assigned_to: updates.assignedTo,
-      })
-      .eq('id', id)
-      .select()
-      .single();
-
-    if (error) throw error;
-
-    toast.success("Task updated successfully");
-    return {
-      id: data.id,
-      title: data.title,
-      description: data.description || '',
-      status: data.status,
-      priority: data.priority,
-      createdAt: new Date(data.created_at!),
-      dueDate: data.due_date ? new Date(data.due_date) : undefined,
-      tags: data.tags || [],
-      assignedTo: data.assigned_to || undefined,
-    };
-  } catch (error) {
-    console.error('Update task error:', error);
-    toast.error("Failed to update task");
-    throw error;
-  }
-}
-
-export async function deleteTask(id: string): Promise<void> {
-  try {
-    const { error } = await supabase
-      .from('tasks')
-      .delete()
-      .eq('id', id);
-
-    if (error) throw error;
-
-    toast.success("Task deleted successfully");
-  } catch (error) {
-    console.error('Delete task error:', error);
-    toast.error("Failed to delete task");
-    throw error;
-  }
-}
-
-// User management with Supabase
-export async function getUsers(): Promise<User[]> {
+// Profile update function
+export async function updateProfile(userId: string, updates: Partial<User>): Promise<User> {
   try {
     const { data, error } = await supabase
       .from('profiles')
-      .select('*');
-
-    if (error) throw error;
-
-    return data.map(profile => ({
-      id: profile.id,
-      name: profile.name,
-      email: profile.id, // We'll need to get email from auth.users if needed
-      role: profile.role,
-      avatar: profile.avatar_url || undefined,
-    }));
-  } catch (error) {
-    console.error('Get users error:', error);
-    toast.error("Failed to fetch users");
-    throw error;
-  }
-}
-
-// Question management with Supabase
-export async function getQuestions(): Promise<Question[]> {
-  try {
-    const { data, error } = await supabase
-      .from('questions')
-      .select('*')
-      .order('created_at', { ascending: false });
-
-    if (error) throw error;
-
-    return data.map(q => ({
-      id: q.id,
-      type: q.type,
-      content: q.content,
-      options: q.options || undefined,
-      correctAnswer: Array.isArray(q.correct_answer) ? 
-        q.correct_answer.map(item => String(item)) : 
-        String(q.correct_answer),
-      points: q.points,
-      category: q.category,
-      createdBy: q.created_by,
-    }));
-  } catch (error) {
-    console.error('Get questions error:', error);
-    toast.error("Failed to fetch questions");
-    throw error;
-  }
-}
-
-export async function createQuestion(question: Omit<Question, "id">): Promise<Question> {
-  try {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('User not authenticated');
-
-    const { data, error } = await supabase
-      .from('questions')
-      .insert({
-        type: question.type,
-        content: question.content,
-        options: question.options,
-        correct_answer: question.correctAnswer,
-        points: question.points,
-        category: question.category,
-        created_by: user.id,
-      })
-      .select()
-      .single();
-
-    if (error) throw error;
-
-    toast.success("Question created successfully");
-    return {
-      id: data.id,
-      type: data.type,
-      content: data.content,
-      options: data.options || undefined,
-      correctAnswer: Array.isArray(data.correct_answer) ? 
-        data.correct_answer.map(item => String(item)) : 
-        String(data.correct_answer),
-      points: data.points,
-      category: data.category,
-      createdBy: data.created_by,
-    };
-  } catch (error) {
-    console.error('Create question error:', error);
-    toast.error("Failed to create question");
-    throw error;
-  }
-}
-
-export async function updateQuestion(id: string, updates: Partial<Question>): Promise<Question> {
-  try {
-    const { data, error } = await supabase
-      .from('questions')
       .update({
-        type: updates.type,
-        content: updates.content,
-        options: updates.options,
-        correct_answer: updates.correctAnswer,
-        points: updates.points,
-        category: updates.category,
+        name: updates.name,
+        bio: updates.bio,
+        slogan: updates.slogan,
+        phone: updates.phone,
+        location: updates.location,
+        social_links: updates.social_links,
+        avatar_url: updates.avatar,
       })
-      .eq('id', id)
+      .eq('id', userId)
       .select()
       .single();
 
     if (error) throw error;
 
-    toast.success("Question updated successfully");
+    toast.success("Profile updated successfully");
     return {
       id: data.id,
-      type: data.type,
-      content: data.content,
-      options: data.options || undefined,
-      correctAnswer: Array.isArray(data.correct_answer) ? 
-        data.correct_answer.map(item => String(item)) : 
-        String(data.correct_answer),
-      points: data.points,
-      category: data.category,
-      createdBy: data.created_by,
+      name: data.name,
+      email: '', // Will be filled by caller
+      role: data.role,
+      avatar: data.avatar_url,
+      bio: data.bio,
+      slogan: data.slogan,
+      phone: data.phone,
+      location: data.location,
+      social_links: data.social_links,
     };
   } catch (error) {
-    console.error('Update question error:', error);
-    toast.error("Failed to update question");
+    console.error('Update profile error:', error);
+    toast.error("Failed to update profile");
     throw error;
   }
 }
 
-export async function deleteQuestion(id: string): Promise<void> {
+// Avatar upload function
+export async function uploadAvatar(userId: string, file: File): Promise<string> {
   try {
-    const { error } = await supabase
-      .from('questions')
-      .delete()
-      .eq('id', id);
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${userId}/avatar.${fileExt}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from('avatars')
+      .upload(fileName, file, { upsert: true });
+
+    if (uploadError) throw uploadError;
+
+    const { data } = supabase.storage
+      .from('avatars')
+      .getPublicUrl(fileName);
+
+    return data.publicUrl;
+  } catch (error) {
+    console.error('Upload avatar error:', error);
+    toast.error("Failed to upload avatar");
+    throw error;
+  }
+}
+
+// Password recovery function
+export async function resetPassword(email: string): Promise<void> {
+  try {
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
 
     if (error) throw error;
 
-    toast.success("Question deleted successfully");
+    toast.success("Password reset email sent");
   } catch (error) {
-    console.error('Delete question error:', error);
-    toast.error("Failed to delete question");
+    console.error('Reset password error:', error);
+    toast.error("Failed to send password reset email");
     throw error;
   }
 }
 
-// Exam management with Supabase
-export async function getExams(): Promise<Exam[]> {
+// Update password function
+export async function updatePassword(newPassword: string): Promise<void> {
+  try {
+    const { error } = await supabase.auth.updateUser({
+      password: newPassword
+    });
+
+    if (error) throw error;
+
+    toast.success("Password updated successfully");
+  } catch (error) {
+    console.error('Update password error:', error);
+    toast.error("Failed to update password");
+    throw error;
+  }
+}
+
+// Forum categories functions
+export async function getForumCategories(): Promise<ForumCategory[]> {
   try {
     const { data, error } = await supabase
-      .from('exams')
+      .from('forum_categories')
       .select('*')
-      .order('created_at', { ascending: false });
+      .order('name');
 
     if (error) throw error;
 
-    return data.map(exam => ({
-      id: exam.id,
-      title: exam.title,
-      description: exam.description || '',
-      duration: exam.duration,
-      start_time: new Date(exam.start_time),
-      end_time: new Date(exam.end_time),
-      questions: exam.questions,
-      created_by: exam.created_by,
-      published: exam.published || false,
+    return data.map(category => ({
+      id: category.id,
+      name: category.name,
+      description: category.description,
+      color: category.color,
+      created_at: new Date(category.created_at!),
+      created_by: category.created_by,
     }));
   } catch (error) {
-    console.error('Get exams error:', error);
-    toast.error("Failed to fetch exams");
+    console.error('Get forum categories error:', error);
+    toast.error("Failed to fetch forum categories");
     throw error;
   }
 }
 
-export async function createExam(exam: Omit<Exam, "id">): Promise<Exam> {
+// Forum posts functions
+export async function getForumPosts(categoryId?: string): Promise<ForumPost[]> {
   try {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('User not authenticated');
-
-    const { data, error } = await supabase
-      .from('exams')
-      .insert({
-        title: exam.title,
-        description: exam.description,
-        duration: exam.duration,
-        start_time: exam.start_time.toISOString(),
-        end_time: exam.end_time.toISOString(),
-        questions: exam.questions,
-        created_by: user.id,
-        published: exam.published,
-      })
-      .select()
-      .single();
-
-    if (error) throw error;
-
-    toast.success("Exam created successfully");
-    return {
-      id: data.id,
-      title: data.title,
-      description: data.description || '',
-      duration: data.duration,
-      start_time: new Date(data.start_time),
-      end_time: new Date(data.end_time),
-      questions: data.questions,
-      created_by: data.created_by,
-      published: data.published || false,
-    };
-  } catch (error) {
-    console.error('Create exam error:', error);
-    toast.error("Failed to create exam");
-    throw error;
-  }
-}
-
-export async function updateExam(id: string, updates: Partial<Exam>): Promise<Exam> {
-  try {
-    const { data, error } = await supabase
-      .from('exams')
-      .update({
-        title: updates.title,
-        description: updates.description,
-        duration: updates.duration,
-        start_time: updates.start_time?.toISOString(),
-        end_time: updates.end_time?.toISOString(),
-        questions: updates.questions,
-        published: updates.published,
-      })
-      .eq('id', id)
-      .select()
-      .single();
-
-    if (error) throw error;
-
-    toast.success("Exam updated successfully");
-    return {
-      id: data.id,
-      title: data.title,
-      description: data.description || '',
-      duration: data.duration,
-      start_time: new Date(data.start_time),
-      end_time: new Date(data.end_time),
-      questions: data.questions,
-      created_by: data.created_by,
-      published: data.published || false,
-    };
-  } catch (error) {
-    console.error('Update exam error:', error);
-    toast.error("Failed to update exam");
-    throw error;
-  }
-}
-
-export async function deleteExam(id: string): Promise<void> {
-  try {
-    const { error } = await supabase
-      .from('exams')
-      .delete()
-      .eq('id', id);
-
-    if (error) throw error;
-
-    toast.success("Exam deleted successfully");
-  } catch (error) {
-    console.error('Delete exam error:', error);
-    toast.error("Failed to delete exam");
-    throw error;
-  }
-}
-
-// Exam submission management with Supabase
-export async function submitExam(submission: Omit<ExamSubmission, "id" | "graded">): Promise<ExamSubmission> {
-  try {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('User not authenticated');
-
-    const { data, error } = await supabase
-      .from('exam_submissions')
-      .insert({
-        exam_id: submission.exam_id,
-        student_id: user.id,
-        submitted_at: submission.submitted_at.toISOString(),
-        answers: submission.answers as any,
-        time_spent: submission.time_spent,
-      })
-      .select()
-      .single();
-
-    if (error) throw error;
-
-    toast.success("Exam submitted successfully");
-    return {
-      id: data.id,
-      exam_id: data.exam_id,
-      exam_title: submission.exam_title,
-      student_id: data.student_id,
-      student_name: submission.student_name,
-      submitted_at: new Date(data.submitted_at!),
-      graded: data.graded || false,
-      score: data.score || undefined,
-      answers: data.answers as Record<string, any>,
-      time_spent: data.time_spent || 0,
-    };
-  } catch (error) {
-    console.error('Submit exam error:', error);
-    toast.error("Failed to submit exam");
-    throw error;
-  }
-}
-
-export async function getExamSubmissions(): Promise<ExamSubmission[]> {
-  try {
-    const { data, error } = await supabase
-      .from('exam_submissions')
+    let query = supabase
+      .from('forum_posts')
       .select(`
         *,
-        exams!inner(title),
         profiles!inner(name)
       `)
-      .order('submitted_at', { ascending: false });
+      .order('pinned', { ascending: false })
+      .order('created_at', { ascending: false });
 
-    if (error) throw error;
-
-    return data.map(sub => ({
-      id: sub.id,
-      exam_id: sub.exam_id,
-      exam_title: sub.exams?.title || 'Unknown Exam',
-      student_id: sub.student_id,
-      student_name: sub.profiles?.name || 'Unknown Student',
-      submitted_at: new Date(sub.submitted_at!),
-      graded: sub.graded || false,
-      score: sub.score || undefined,
-      total_points: sub.total_points || undefined,
-      answers: sub.answers as Record<string, any>,
-      time_spent: sub.time_spent || 0,
-      feedback: sub.feedback as Record<string, string> | undefined,
-      individual_scores: sub.individual_scores as Record<string, number> | undefined,
-    }));
-  } catch (error) {
-    console.error('Get exam submissions error:', error);
-    toast.error("Failed to fetch exam submissions");
-    throw error;
-  }
-}
-
-export async function gradeSubmission(submissionId: string, score: number, feedback?: Record<string, string>): Promise<ExamSubmission> {
-  try {
-    const updateData: any = {
-      score,
-      graded: true,
-    };
-
-    if (feedback) {
-      updateData.feedback = feedback;
-      
-      // Extract total_points and individual_scores if they exist in feedback
-      if (feedback.total_points) {
-        updateData.total_points = parseInt(feedback.total_points);
-      }
-      
-      if (feedback.individual_scores) {
-        updateData.individual_scores = JSON.parse(feedback.individual_scores);
-      }
+    if (categoryId) {
+      query = query.eq('category_id', categoryId);
     }
 
+    const { data, error } = await query;
+
+    if (error) throw error;
+
+    return data.map(post => ({
+      id: post.id,
+      title: post.title,
+      content: post.content,
+      category_id: post.category_id,
+      author_id: post.author_id,
+      author_name: post.profiles?.name || 'Unknown User',
+      pinned: post.pinned,
+      locked: post.locked,
+      views: post.views,
+      created_at: new Date(post.created_at!),
+      updated_at: new Date(post.updated_at!),
+    }));
+  } catch (error) {
+    console.error('Get forum posts error:', error);
+    toast.error("Failed to fetch forum posts");
+    throw error;
+  }
+}
+
+export async function createForumPost(post: Omit<ForumPost, "id" | "author_name" | "views" | "created_at" | "updated_at">): Promise<ForumPost> {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('User not authenticated');
+
     const { data, error } = await supabase
-      .from('exam_submissions')
-      .update(updateData)
-      .eq('id', submissionId)
+      .from('forum_posts')
+      .insert({
+        title: post.title,
+        content: post.content,
+        category_id: post.category_id,
+        author_id: user.id,
+        pinned: post.pinned,
+        locked: post.locked,
+      })
       .select(`
         *,
-        exams!inner(title),
         profiles!inner(name)
       `)
       .single();
 
     if (error) throw error;
 
-    toast.success("Submission graded successfully");
+    toast.success("Post created successfully");
     return {
       id: data.id,
-      exam_id: data.exam_id,
-      exam_title: data.exams?.title || 'Unknown Exam',
-      student_id: data.student_id,
-      student_name: data.profiles?.name || 'Unknown Student',
-      submitted_at: new Date(data.submitted_at!),
-      graded: data.graded || false,
-      score: data.score || undefined,
-      total_points: data.total_points || undefined,
-      answers: data.answers as Record<string, any>,
-      time_spent: data.time_spent || 0,
-      feedback: data.feedback as Record<string, string> | undefined,
-      individual_scores: data.individual_scores as Record<string, number> | undefined,
+      title: data.title,
+      content: data.content,
+      category_id: data.category_id,
+      author_id: data.author_id,
+      author_name: data.profiles?.name || 'Unknown User',
+      pinned: data.pinned,
+      locked: data.locked,
+      views: data.views,
+      created_at: new Date(data.created_at!),
+      updated_at: new Date(data.updated_at!),
     };
   } catch (error) {
-    console.error('Grade submission error:', error);
-    toast.error("Failed to grade submission");
+    console.error('Create forum post error:', error);
+    toast.error("Failed to create post");
     throw error;
   }
 }
+
+// Forum replies functions
+export async function getForumReplies(postId: string): Promise<ForumReply[]> {
+  try {
+    const { data, error } = await supabase
+      .from('forum_replies')
+      .select(`
+        *,
+        profiles!inner(name)
+      `)
+      .eq('post_id', postId)
+      .order('created_at');
+
+    if (error) throw error;
+
+    return data.map(reply => ({
+      id: reply.id,
+      content: reply.content,
+      post_id: reply.post_id,
+      author_id: reply.author_id,
+      author_name: reply.profiles?.name || 'Unknown User',
+      parent_id: reply.parent_id,
+      created_at: new Date(reply.created_at!),
+      updated_at: new Date(reply.updated_at!),
+    }));
+  } catch (error) {
+    console.error('Get forum replies error:', error);
+    toast.error("Failed to fetch replies");
+    throw error;
+  }
+}
+
+export async function createForumReply(reply: Omit<ForumReply, "id" | "author_name" | "created_at" | "updated_at">): Promise<ForumReply> {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('User not authenticated');
+
+    const { data, error } = await supabase
+      .from('forum_replies')
+      .insert({
+        content: reply.content,
+        post_id: reply.post_id,
+        author_id: user.id,
+        parent_id: reply.parent_id,
+      })
+      .select(`
+        *,
+        profiles!inner(name)
+      `)
+      .single();
+
+    if (error) throw error;
+
+    toast.success("Reply posted successfully");
+    return {
+      id: data.id,
+      content: data.content,
+      post_id: data.post_id,
+      author_id: data.author_id,
+      author_name: data.profiles?.name || 'Unknown User',
+      parent_id: data.parent_id,
+      created_at: new Date(data.created_at!),
+      updated_at: new Date(data.updated_at!),
+    };
+  } catch (error) {
+    console.error('Create forum reply error:', error);
+    toast.error("Failed to post reply");
+    throw error;
+  }
+}
+
+// ... keep existing code (task, question, exam functions) the same

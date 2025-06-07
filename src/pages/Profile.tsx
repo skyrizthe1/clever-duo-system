@@ -1,13 +1,16 @@
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Header } from '@/components/Header';
-import { useQuery } from '@tanstack/react-query';
-import { getCurrentUser } from '@/services/api';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { getCurrentUser, updateProfile, uploadAvatar } from '@/services/api';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { toast } from 'sonner';
+import { Camera, User, MapPin, Phone, Globe } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -15,24 +18,25 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogClose
 } from '@/components/ui/dialog';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
 import { Switch } from '@/components/ui/switch';
 
 const Profile = () => {
   const { data: currentUser, isLoading } = useQuery({
     queryKey: ['currentUser'],
     queryFn: getCurrentUser
+  });
+
+  const queryClient = useQueryClient();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const [profileData, setProfileData] = useState({
+    name: '',
+    bio: '',
+    slogan: '',
+    phone: '',
+    location: '',
+    social_links: {} as Record<string, string>,
   });
 
   const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
@@ -55,11 +59,56 @@ const Profile = () => {
     shareActivityWithTeachers: true,
   });
 
+  React.useEffect(() => {
+    if (currentUser) {
+      setProfileData({
+        name: currentUser.name || '',
+        bio: currentUser.bio || '',
+        slogan: currentUser.slogan || '',
+        phone: currentUser.phone || '',
+        location: currentUser.location || '',
+        social_links: currentUser.social_links || {},
+      });
+    }
+  }, [currentUser]);
+
+  const updateProfileMutation = useMutation({
+    mutationFn: (updates: any) => updateProfile(currentUser!.id, updates),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['currentUser'] });
+      toast.success('Profile updated successfully');
+    }
+  });
+
+  const uploadAvatarMutation = useMutation({
+    mutationFn: ({ userId, file }: { userId: string; file: File }) => uploadAvatar(userId, file),
+    onSuccess: (avatarUrl) => {
+      updateProfileMutation.mutate({ avatar: avatarUrl });
+    }
+  });
+
   const handleProfileUpdate = (e: React.FormEvent) => {
     e.preventDefault();
-    // This would typically update the user profile
-    // For now, we'll just show a toast notification
-    toast.success('Profile updated successfully');
+    updateProfileMutation.mutate(profileData);
+  };
+
+  const handleAvatarUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file && currentUser) {
+      uploadAvatarMutation.mutate({ userId: currentUser.id, file });
+    }
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setProfileData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleSocialLinkChange = (platform: string, value: string) => {
+    setProfileData(prev => ({
+      ...prev,
+      social_links: { ...prev.social_links, [platform]: value }
+    }));
   };
 
   const handlePasswordChange = (e: React.FormEvent) => {
@@ -133,31 +182,144 @@ const Profile = () => {
       <main className="flex-1 container mx-auto px-4 py-6">
         <h1 className="text-2xl font-bold mb-6">My Profile</h1>
         
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="col-span-2">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2">
             <Card>
               <CardHeader>
                 <CardTitle>Personal Information</CardTitle>
               </CardHeader>
               <CardContent>
-                <form onSubmit={handleProfileUpdate} className="space-y-4">
+                <form onSubmit={handleProfileUpdate} className="space-y-6">
+                  <div className="flex items-center space-x-4">
+                    <div className="relative">
+                      <Avatar className="h-20 w-20">
+                        <AvatarImage src={currentUser?.avatar} alt={currentUser?.name} />
+                        <AvatarFallback>
+                          <User className="h-8 w-8" />
+                        </AvatarFallback>
+                      </Avatar>
+                      <Button
+                        type="button"
+                        size="sm"
+                        className="absolute -bottom-2 -right-2 h-8 w-8 rounded-full"
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={uploadAvatarMutation.isPending}
+                      >
+                        <Camera className="h-4 w-4" />
+                      </Button>
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/*"
+                        onChange={handleAvatarUpload}
+                        className="hidden"
+                      />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-semibold">{currentUser?.name}</h3>
+                      <p className="text-sm text-muted-foreground">{currentUser?.email}</p>
+                      <p className="text-sm text-muted-foreground capitalize">{currentUser?.role}</p>
+                    </div>
+                  </div>
+
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="name">Name</Label>
-                      <Input id="name" defaultValue={currentUser?.name || ''} />
+                      <Label htmlFor="name">Full Name</Label>
+                      <Input 
+                        id="name" 
+                        name="name"
+                        value={profileData.name} 
+                        onChange={handleInputChange}
+                      />
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="email">Email</Label>
-                      <Input id="email" type="email" defaultValue={currentUser?.email || ''} readOnly />
+                      <Input id="email" type="email" value={currentUser?.email || ''} readOnly />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="slogan">Slogan</Label>
+                    <Input 
+                      id="slogan" 
+                      name="slogan"
+                      placeholder="Your personal motto or slogan"
+                      value={profileData.slogan} 
+                      onChange={handleInputChange}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="bio">Bio</Label>
+                    <Textarea 
+                      id="bio" 
+                      name="bio"
+                      placeholder="Tell us about yourself..."
+                      value={profileData.bio} 
+                      onChange={handleInputChange}
+                      rows={4}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="phone">Phone</Label>
+                      <div className="relative">
+                        <Phone className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                        <Input 
+                          id="phone" 
+                          name="phone"
+                          placeholder="+1 (555) 123-4567"
+                          value={profileData.phone} 
+                          onChange={handleInputChange}
+                          className="pl-10"
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="location">Location</Label>
+                      <div className="relative">
+                        <MapPin className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                        <Input 
+                          id="location" 
+                          name="location"
+                          placeholder="City, Country"
+                          value={profileData.location} 
+                          onChange={handleInputChange}
+                          className="pl-10"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    <Label>Social Links</Label>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {['twitter', 'linkedin', 'github', 'website'].map((platform) => (
+                        <div key={platform} className="space-y-2">
+                          <Label htmlFor={platform} className="capitalize">{platform}</Label>
+                          <div className="relative">
+                            <Globe className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                            <Input 
+                              id={platform}
+                              placeholder={`Your ${platform} URL`}
+                              value={profileData.social_links[platform] || ''} 
+                              onChange={(e) => handleSocialLinkChange(platform, e.target.value)}
+                              className="pl-10"
+                            />
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   </div>
                   
-                  <div className="space-y-2">
-                    <Label htmlFor="role">Role</Label>
-                    <Input id="role" defaultValue={currentUser?.role || ''} readOnly />
-                  </div>
-                  
-                  <Button type="submit" className="mt-4">Save Changes</Button>
+                  <Button 
+                    type="submit" 
+                    className="mt-4"
+                    disabled={updateProfileMutation.isPending}
+                  >
+                    {updateProfileMutation.isPending ? 'Saving...' : 'Save Changes'}
+                  </Button>
                 </form>
               </CardContent>
             </Card>

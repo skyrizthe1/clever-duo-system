@@ -116,29 +116,185 @@ export type Database = {
           },
         ]
       }
+      forum_categories: {
+        Row: {
+          color: string | null
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          id: string
+          name: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          name: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "forum_categories_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      forum_posts: {
+        Row: {
+          author_id: string | null
+          category_id: string | null
+          content: string
+          created_at: string | null
+          id: string
+          locked: boolean | null
+          pinned: boolean | null
+          title: string
+          updated_at: string | null
+          views: number | null
+        }
+        Insert: {
+          author_id?: string | null
+          category_id?: string | null
+          content: string
+          created_at?: string | null
+          id?: string
+          locked?: boolean | null
+          pinned?: boolean | null
+          title: string
+          updated_at?: string | null
+          views?: number | null
+        }
+        Update: {
+          author_id?: string | null
+          category_id?: string | null
+          content?: string
+          created_at?: string | null
+          id?: string
+          locked?: boolean | null
+          pinned?: boolean | null
+          title?: string
+          updated_at?: string | null
+          views?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "forum_posts_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "forum_posts_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "forum_categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      forum_replies: {
+        Row: {
+          author_id: string | null
+          content: string
+          created_at: string | null
+          id: string
+          parent_id: string | null
+          post_id: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          author_id?: string | null
+          content: string
+          created_at?: string | null
+          id?: string
+          parent_id?: string | null
+          post_id?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          author_id?: string | null
+          content?: string
+          created_at?: string | null
+          id?: string
+          parent_id?: string | null
+          post_id?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "forum_replies_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "forum_replies_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "forum_replies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "forum_replies_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "forum_posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
+          bio: string | null
           created_at: string | null
           id: string
+          location: string | null
           name: string
+          phone: string | null
           role: Database["public"]["Enums"]["user_role"]
+          slogan: string | null
+          social_links: Json | null
           updated_at: string | null
         }
         Insert: {
           avatar_url?: string | null
+          bio?: string | null
           created_at?: string | null
           id: string
+          location?: string | null
           name: string
+          phone?: string | null
           role?: Database["public"]["Enums"]["user_role"]
+          slogan?: string | null
+          social_links?: Json | null
           updated_at?: string | null
         }
         Update: {
           avatar_url?: string | null
+          bio?: string | null
           created_at?: string | null
           id?: string
+          location?: string | null
           name?: string
+          phone?: string | null
           role?: Database["public"]["Enums"]["user_role"]
+          slogan?: string | null
+          social_links?: Json | null
           updated_at?: string | null
         }
         Relationships: []
