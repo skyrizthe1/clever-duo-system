@@ -299,7 +299,7 @@ export async function logout(): Promise<void> {
   }
 }
 
-// Get Current User with Supabase
+// Get Current User with Supabase - Fixed TypeScript error
 export async function getCurrentUser(): Promise<User | null> {
   try {
     const { data: { user }, error } = await supabase.auth.getUser();
@@ -331,6 +331,20 @@ export async function getCurrentUser(): Promise<User | null> {
     const userRole = profile?.role || user.user_metadata?.role || 'student';
 
     console.log('Current user profile loaded:', userName);
+    
+    // Fix for social_links type casting
+    let socialLinks = {};
+    if (profile?.social_links && 
+        typeof profile.social_links === 'object' && 
+        profile.social_links !== null &&
+        !Array.isArray(profile.social_links)) {
+      try {
+        socialLinks = profile.social_links as Record<string, string>;
+      } catch (e) {
+        socialLinks = {};
+      }
+    }
+
     return {
       id: user.id,
       name: userName,
@@ -341,12 +355,7 @@ export async function getCurrentUser(): Promise<User | null> {
       slogan: profile?.slogan,
       phone: profile?.phone,
       location: profile?.location,
-      social_links: profile?.social_links && 
-        typeof profile.social_links === 'object' && 
-        profile.social_links !== null &&
-        !Array.isArray(profile.social_links)
-        ? (profile.social_links as Record<string, string>) 
-        : {},
+      social_links: socialLinks,
     };
   } catch (error) {
     console.error('Get current user error:', error);
@@ -1173,6 +1182,174 @@ export async function createForumReply(reply: Omit<ForumReply, "id" | "author_na
   } catch (error) {
     console.error('Create forum reply error:', error);
     toast.error("Failed to post reply");
+    throw error;
+  }
+}
+
+// Password Recovery Request Functions
+export interface PasswordRecoveryRequest {
+  id: string;
+  user_id: string;
+  user_email: string;
+  user_name: string;
+  reason?: string;
+  status: 'pending' | 'approved' | 'denied';
+  admin_id?: string;
+  admin_notes?: string;
+  temporary_password?: string;
+  created_at: Date;
+  updated_at: Date;
+  processed_at?: Date;
+}
+
+export async function createPasswordRecoveryRequest(reason?: string): Promise<PasswordRecoveryRequest> {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('User not authenticated');
+
+    // Get user profile for name
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('name')
+      .eq('id', user.id)
+      .single();
+
+    const { data, error } = await supabase
+      .from('password_recovery_requests')
+      .insert({
+        user_id: user.id,
+        user_email: user.email!,
+        user_name: profile?.name || user.email?.split('@')[0] || 'User',
+        reason: reason,
+        status: 'pending',
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    toast.success("Password recovery request submitted successfully");
+    return {
+      id: data.id,
+      user_id: data.user_id,
+      user_email: data.user_email,
+      user_name: data.user_name,
+      reason: data.reason,
+      status: data.status,
+      admin_id: data.admin_id,
+      admin_notes: data.admin_notes,
+      temporary_password: data.temporary_password,
+      created_at: new Date(data.created_at),
+      updated_at: new Date(data.updated_at),
+      processed_at: data.processed_at ? new Date(data.processed_at) : undefined,
+    };
+  } catch (error) {
+    console.error('Create password recovery request error:', error);
+    toast.error("Failed to submit password recovery request");
+    throw error;
+  }
+}
+
+export async function getPasswordRecoveryRequests(): Promise<PasswordRecoveryRequest[]> {
+  try {
+    const { data, error } = await supabase
+      .from('password_recovery_requests')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+
+    return data.map(request => ({
+      id: request.id,
+      user_id: request.user_id,
+      user_email: request.user_email,
+      user_name: request.user_name,
+      reason: request.reason,
+      status: request.status,
+      admin_id: request.admin_id,
+      admin_notes: request.admin_notes,
+      temporary_password: request.temporary_password,
+      created_at: new Date(request.created_at),
+      updated_at: new Date(request.updated_at),
+      processed_at: request.processed_at ? new Date(request.processed_at) : undefined,
+    }));
+  } catch (error) {
+    console.error('Get password recovery requests error:', error);
+    toast.error("Failed to fetch password recovery requests");
+    throw error;
+  }
+}
+
+function generateTemporaryPassword(): string {
+  const length = 12;
+  const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*";
+  let password = "";
+  for (let i = 0; i < length; i++) {
+    password += charset.charAt(Math.floor(Math.random() * charset.length));
+  }
+  return password;
+}
+
+export async function processPasswordRecoveryRequest(
+  requestId: string, 
+  action: 'approve' | 'deny', 
+  adminNotes?: string
+): Promise<PasswordRecoveryRequest> {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('User not authenticated');
+
+    let updateData: any = {
+      status: action === 'approve' ? 'approved' : 'denied',
+      admin_id: user.id,
+      admin_notes: adminNotes,
+      processed_at: new Date().toISOString(),
+    };
+
+    if (action === 'approve') {
+      updateData.temporary_password = generateTemporaryPassword();
+    }
+
+    const { data, error } = await supabase
+      .from('password_recovery_requests')
+      .update(updateData)
+      .eq('id', requestId)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    // If approved, update the user's password
+    if (action === 'approve' && updateData.temporary_password) {
+      const { error: passwordError } = await supabase.auth.admin.updateUserById(
+        data.user_id,
+        { password: updateData.temporary_password }
+      );
+
+      if (passwordError) {
+        console.error('Failed to update user password:', passwordError);
+        toast.error("Request processed but failed to update password");
+      }
+    }
+
+    toast.success(`Password recovery request ${action}d successfully`);
+    return {
+      id: data.id,
+      user_id: data.user_id,
+      user_email: data.user_email,
+      user_name: data.user_name,
+      reason: data.reason,
+      status: data.status,
+      admin_id: data.admin_id,
+      admin_notes: data.admin_notes,
+      temporary_password: data.temporary_password,
+      created_at: new Date(data.created_at),
+      updated_at: new Date(data.updated_at),
+      processed_at: new Date(data.processed_at),
+    };
+  } catch (error) {
+    console.error('Process password recovery request error:', error);
+    toast.error("Failed to process password recovery request");
     throw error;
   }
 }

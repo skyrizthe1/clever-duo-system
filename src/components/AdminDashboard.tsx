@@ -1,17 +1,19 @@
 
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { getUsers, getExams, getQuestions } from '@/services/api';
+import { getUsers, getExams, getQuestions, getPasswordRecoveryRequests } from '@/services/api';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { UserIcon, FileText, Check, Settings, Database, Shield } from 'lucide-react';
+import { UserIcon, FileText, Check, Settings, Database, Shield, Key } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { UserManagementDialog } from './UserManagementDialog';
 import { ExamSettingsDialog } from './ExamSettingsDialog';
+import { PasswordRecoveryAdmin } from './PasswordRecoveryAdmin';
 
 export function AdminDashboard() {
   const navigate = useNavigate();
   const [userManagementOpen, setUserManagementOpen] = useState(false);
   const [examSettingsOpen, setExamSettingsOpen] = useState(false);
+  const [passwordRecoveryOpen, setPasswordRecoveryOpen] = useState(false);
   
   const { data: users = [] } = useQuery({
     queryKey: ['users'],
@@ -28,6 +30,13 @@ export function AdminDashboard() {
     queryFn: getExams
   });
 
+  const { data: recoveryRequests = [] } = useQuery({
+    queryKey: ['password-recovery-requests'],
+    queryFn: getPasswordRecoveryRequests
+  });
+
+  const pendingRecoveryRequests = recoveryRequests.filter(r => r.status === 'pending');
+
   const handleManageUsers = () => {
     setUserManagementOpen(true);
   };
@@ -40,9 +49,29 @@ export function AdminDashboard() {
     setExamSettingsOpen(true);
   };
 
+  const handlePasswordRecovery = () => {
+    setPasswordRecoveryOpen(true);
+  };
+
+  if (passwordRecoveryOpen) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <button
+            onClick={() => setPasswordRecoveryOpen(false)}
+            className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+          >
+            ← Back to Dashboard
+          </button>
+        </div>
+        <PasswordRecoveryAdmin />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
-      <div className="grid gap-6 md:grid-cols-3">
+      <div className="grid gap-6 md:grid-cols-4">
         <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-0 shadow-lg hover:shadow-xl transition-all duration-300">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-blue-700">Total Users</CardTitle>
@@ -81,10 +110,21 @@ export function AdminDashboard() {
             </p>
           </CardContent>
         </Card>
+
+        <Card className="bg-gradient-to-br from-orange-50 to-orange-100 border-0 shadow-lg hover:shadow-xl transition-all duration-300">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-orange-700">Password Requests</CardTitle>
+            <Key className="h-5 w-5 text-orange-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold text-orange-800">{pendingRecoveryRequests.length}</div>
+            <p className="text-xs text-orange-600 mt-1">Pending Review</p>
+          </CardContent>
+        </Card>
       </div>
       
       <h2 className="text-2xl font-bold mt-8 mb-6 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">System Administration</h2>
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
         <Card 
           className="cursor-pointer hover:bg-gradient-to-br hover:from-blue-50 hover:to-blue-100 transition-all duration-300 hover:scale-105 hover:shadow-xl border-0 shadow-lg bg-white/80 backdrop-blur-sm"
           onClick={handleManageUsers}
@@ -133,6 +173,30 @@ export function AdminDashboard() {
           </CardHeader>
           <CardContent>
             <p className="text-gray-600">Configure system-wide exam settings and policies</p>
+          </CardContent>
+        </Card>
+
+        <Card 
+          className="cursor-pointer hover:bg-gradient-to-br hover:from-orange-50 hover:to-orange-100 transition-all duration-300 hover:scale-105 hover:shadow-xl border-0 shadow-lg bg-white/80 backdrop-blur-sm"
+          onClick={handlePasswordRecovery}
+        >
+          <CardHeader className="pb-3">
+            <div className="flex items-center space-x-3">
+              <div className="p-2 bg-orange-100 rounded-lg">
+                <Key className="h-6 w-6 text-orange-600" />
+              </div>
+              <CardTitle className="text-lg text-gray-800">Password Recovery</CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <p className="text-gray-600">Review and process password reset requests</p>
+            {pendingRecoveryRequests.length > 0 && (
+              <div className="mt-2">
+                <span className="bg-orange-100 text-orange-800 text-xs font-medium px-2 py-1 rounded">
+                  {pendingRecoveryRequests.length} pending
+                </span>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

@@ -1,30 +1,20 @@
 
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { login, resetPassword, getCurrentUser } from '@/services/api';
+import { login, getCurrentUser } from '@/services/api';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { GraduationCap } from 'lucide-react';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
+import { PasswordRecoveryDialog } from '@/components/PasswordRecoveryDialog';
 
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [resetEmail, setResetEmail] = useState('');
-  const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
-  const [isResetLoading, setIsResetLoading] = useState(false);
+  const [isRecoveryDialogOpen, setIsRecoveryDialogOpen] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -48,22 +38,6 @@ const Login = () => {
       // Error is already handled in the login function
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  const handlePasswordReset = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsResetLoading(true);
-    
-    try {
-      await resetPassword(resetEmail);
-      setIsResetDialogOpen(false);
-      setResetEmail('');
-      toast.success('Password reset email sent! Check your inbox.');
-    } catch (error) {
-      // Error is already handled in the resetPassword function
-    } finally {
-      setIsResetLoading(false);
     }
   };
 
@@ -113,39 +87,14 @@ const Login = () => {
               </div>
               
               <div className="flex items-center justify-between">
-                <Dialog open={isResetDialogOpen} onOpenChange={setIsResetDialogOpen}>
-                  <DialogTrigger asChild>
-                    <Button variant="link" className="p-0 text-sm">
-                      Forgot password?
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>Reset Password</DialogTitle>
-                      <DialogDescription>
-                        Enter your email address and we'll send you a link to reset your password.
-                      </DialogDescription>
-                    </DialogHeader>
-                    <form onSubmit={handlePasswordReset} className="space-y-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="resetEmail">Email</Label>
-                        <Input
-                          id="resetEmail"
-                          type="email"
-                          value={resetEmail}
-                          onChange={(e) => setResetEmail(e.target.value)}
-                          placeholder="Enter your email"
-                          required
-                        />
-                      </div>
-                      <DialogFooter>
-                        <Button type="submit" disabled={isResetLoading}>
-                          {isResetLoading ? 'Sending...' : 'Send Reset Link'}
-                        </Button>
-                      </DialogFooter>
-                    </form>
-                  </DialogContent>
-                </Dialog>
+                <Button 
+                  type="button"
+                  variant="link" 
+                  className="p-0 text-sm"
+                  onClick={() => setIsRecoveryDialogOpen(true)}
+                >
+                  Forgot password?
+                </Button>
               </div>
 
               <Button 
@@ -168,6 +117,11 @@ const Login = () => {
           </CardContent>
         </Card>
       </div>
+
+      <PasswordRecoveryDialog 
+        open={isRecoveryDialogOpen}
+        onOpenChange={setIsRecoveryDialogOpen}
+      />
     </div>
   );
 };
