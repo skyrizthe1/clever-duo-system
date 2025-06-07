@@ -6,9 +6,9 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { toast } from 'sonner';
 import { GraduationCap } from 'lucide-react';
 import { PasswordRecoveryDialog } from '@/components/PasswordRecoveryDialog';
+import { CloudBackground } from '@/components/CloudBackground';
 
 const Login = () => {
   const [email, setEmail] = useState('');
@@ -42,46 +42,49 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
-      <div className="w-full max-w-md space-y-6">
+    <div className="min-h-screen flex items-center justify-center relative overflow-hidden">
+      <CloudBackground />
+      <div className="w-full max-w-md space-y-8 relative z-10 mx-4">
         <div className="text-center">
-          <div className="flex items-center justify-center mb-6">
-            <div className="p-3 bg-blue-600 rounded-full">
-              <GraduationCap className="h-8 w-8 text-white" />
+          <div className="flex items-center justify-center mb-8">
+            <div className="p-4 bg-gradient-to-br from-primary to-primary/80 rounded-2xl shadow-xl">
+              <GraduationCap className="h-12 w-12 text-white" />
             </div>
           </div>
-          <h1 className="text-3xl font-bold text-gray-900">Welcome Back</h1>
-          <p className="text-gray-600 mt-2">Sign in to your exam portal account</p>
+          <h1 className="text-4xl font-bold gradient-text mb-3">Welcome Back</h1>
+          <p className="text-muted-foreground text-lg">Sign in to your exam portal account</p>
         </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Sign In</CardTitle>
-            <CardDescription>
+        <Card className="modern-card border-0 shadow-2xl">
+          <CardHeader className="text-center pb-6">
+            <CardTitle className="text-2xl font-bold text-foreground">Sign In</CardTitle>
+            <CardDescription className="text-muted-foreground">
               Enter your email and password to access your account
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-6">
               <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="email" className="text-sm font-semibold text-foreground">Email</Label>
                 <Input
                   id="email"
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="Enter your email"
+                  className="h-12 bg-white/50 border-white/20 focus:border-primary focus:ring-primary"
                   required
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
+                <Label htmlFor="password" className="text-sm font-semibold text-foreground">Password</Label>
                 <Input
                   id="password"
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="Enter your password"
+                  className="h-12 bg-white/50 border-white/20 focus:border-primary focus:ring-primary"
                   required
                 />
               </div>
@@ -90,7 +93,7 @@ const Login = () => {
                 <Button 
                   type="button"
                   variant="link" 
-                  className="p-0 text-sm"
+                  className="p-0 text-sm text-primary hover:text-primary/80"
                   onClick={() => setIsRecoveryDialogOpen(true)}
                 >
                   Forgot password?
@@ -99,17 +102,17 @@ const Login = () => {
 
               <Button 
                 type="submit" 
-                className="w-full bg-blue-600 hover:bg-blue-700"
+                className="w-full h-12 bg-gradient-to-r from-primary to-primary/90 hover:from-primary/90 hover:to-primary text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-[1.02]"
                 disabled={isLoading}
               >
                 {isLoading ? 'Signing in...' : 'Sign In'}
               </Button>
             </form>
 
-            <div className="mt-6 text-center">
-              <p className="text-sm text-gray-600">
+            <div className="mt-8 text-center">
+              <p className="text-sm text-muted-foreground">
                 Don't have an account?{' '}
-                <Link to="/register" className="text-blue-600 hover:underline">
+                <Link to="/register" className="text-primary hover:text-primary/80 font-semibold">
                   Sign up
                 </Link>
               </p>

@@ -5,6 +5,8 @@ import { getCurrentUser } from '@/services/api';
 import { AdminDashboard } from '@/components/AdminDashboard';
 import { TeacherDashboard } from '@/components/TeacherDashboard';
 import { StudentDashboard } from '@/components/StudentDashboard';
+import { Button } from '@/components/ui/button';
+import { CloudBackground } from '@/components/CloudBackground';
 
 interface User {
   id: string;
@@ -34,12 +36,13 @@ const Index = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex flex-col bg-gradient-to-br from-blue-50 to-indigo-100">
+      <div className="min-h-screen relative overflow-hidden">
+        <CloudBackground />
         <Header />
-        <main className="flex-1 flex items-center justify-center">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-            <p className="text-gray-600">Loading your dashboard...</p>
+        <main className="flex-1 flex items-center justify-center relative z-10">
+          <div className="text-center modern-card p-12 rounded-3xl mx-4">
+            <div className="animate-spin rounded-full h-16 w-16 border-4 border-primary border-t-transparent mx-auto mb-6"></div>
+            <p className="text-muted-foreground text-lg">Loading your dashboard...</p>
           </div>
         </main>
       </div>
@@ -47,23 +50,37 @@ const Index = () => {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-br from-blue-50 to-indigo-100">
+    <div className="min-h-screen relative overflow-hidden">
+      <CloudBackground />
       <Header />
-      <main className="flex-1 container mx-auto px-4 py-6">
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-2">
-            Welcome back, {currentUser?.name}!
-          </h1>
-          <p className="text-gray-600 text-lg">
-            {currentUser?.role === 'admin' && "Manage your educational platform"}
-            {currentUser?.role === 'teacher' && "Create and manage your exams"}
-            {currentUser?.role === 'student' && "Check your upcoming exams and results"}
-          </p>
+      <main className="flex-1 container mx-auto px-4 py-12 relative z-10">
+        <div className="text-center mb-16">
+          <div className="modern-card p-16 rounded-3xl max-w-4xl mx-auto">
+            <h1 className="text-6xl font-bold gradient-text mb-6 leading-tight">
+              Modern Exam Portal
+            </h1>
+            <h2 className="text-3xl font-semibold text-foreground mb-4">
+              Welcome back, {currentUser?.name}!
+            </h2>
+            <p className="text-muted-foreground text-xl mb-8 max-w-2xl mx-auto leading-relaxed">
+              {currentUser?.role === 'admin' && "Manage your educational platform with powerful tools and insights"}
+              {currentUser?.role === 'teacher' && "Create and manage your exams with our intuitive interface"}
+              {currentUser?.role === 'student' && "Check your upcoming exams and track your academic progress"}
+            </p>
+            <Button 
+              size="lg" 
+              className="bg-primary hover:bg-primary/90 text-primary-foreground px-8 py-4 text-lg rounded-full shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105"
+            >
+              Get Started
+            </Button>
+          </div>
         </div>
         
-        {currentUser?.role === 'admin' && <AdminDashboard />}
-        {currentUser?.role === 'teacher' && <TeacherDashboard />}
-        {currentUser?.role === 'student' && <StudentDashboard />}
+        <div className="modern-card rounded-3xl p-8">
+          {currentUser?.role === 'admin' && <AdminDashboard />}
+          {currentUser?.role === 'teacher' && <TeacherDashboard />}
+          {currentUser?.role === 'student' && <StudentDashboard />}
+        </div>
       </main>
     </div>
   );
