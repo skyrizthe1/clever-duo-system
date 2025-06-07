@@ -483,7 +483,9 @@ export async function getUsers(): Promise<User[]> {
       slogan: profile.slogan,
       phone: profile.phone,
       location: profile.location,
-      social_links: typeof profile.social_links === 'object' && profile.social_links !== null 
+      social_links: typeof profile.social_links === 'object' && 
+        profile.social_links !== null && 
+        !Array.isArray(profile.social_links)
         ? (profile.social_links as Record<string, string>) 
         : {},
     }));
