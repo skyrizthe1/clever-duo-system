@@ -1,3 +1,4 @@
+
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -332,13 +333,14 @@ export async function getCurrentUser(): Promise<User | null> {
 
     console.log('Current user profile loaded:', userName);
     
-    // Fix for social_links type casting
-    let socialLinks = {};
+    // Fix for social_links type casting - properly handle Json type
+    let socialLinks: Record<string, string> = {};
     if (profile?.social_links && 
         typeof profile.social_links === 'object' && 
         profile.social_links !== null &&
         !Array.isArray(profile.social_links)) {
       try {
+        // Cast to Record<string, string> only if it's an object
         socialLinks = profile.social_links as Record<string, string>;
       } catch (e) {
         socialLinks = {};
@@ -1235,7 +1237,7 @@ export async function createPasswordRecoveryRequest(reason?: string): Promise<Pa
       user_email: data.user_email,
       user_name: data.user_name,
       reason: data.reason,
-      status: data.status,
+      status: data.status as 'pending' | 'approved' | 'denied',
       admin_id: data.admin_id,
       admin_notes: data.admin_notes,
       temporary_password: data.temporary_password,
@@ -1265,7 +1267,7 @@ export async function getPasswordRecoveryRequests(): Promise<PasswordRecoveryReq
       user_email: request.user_email,
       user_name: request.user_name,
       reason: request.reason,
-      status: request.status,
+      status: request.status as 'pending' | 'approved' | 'denied',
       admin_id: request.admin_id,
       admin_notes: request.admin_notes,
       temporary_password: request.temporary_password,
@@ -1339,7 +1341,7 @@ export async function processPasswordRecoveryRequest(
       user_email: data.user_email,
       user_name: data.user_name,
       reason: data.reason,
-      status: data.status,
+      status: data.status as 'pending' | 'approved' | 'denied',
       admin_id: data.admin_id,
       admin_notes: data.admin_notes,
       temporary_password: data.temporary_password,
