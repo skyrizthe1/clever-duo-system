@@ -1,4 +1,3 @@
-
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -135,6 +134,22 @@ const cleanupAuthState = () => {
   }
 };
 
+// Helper function to safely convert Json to Record<string, string>
+const convertSocialLinks = (socialLinks: any): Record<string, string> => {
+  if (!socialLinks || typeof socialLinks !== 'object' || Array.isArray(socialLinks)) {
+    return {};
+  }
+  
+  // Ensure all values are strings
+  const result: Record<string, string> = {};
+  for (const [key, value] of Object.entries(socialLinks)) {
+    if (typeof value === 'string') {
+      result[key] = value;
+    }
+  }
+  return result;
+};
+
 // User Registration with Supabase
 export async function registerUser(userData: RegisterUserData): Promise<User> {
   try {
@@ -267,7 +282,7 @@ export async function login(email: string, password: string): Promise<User> {
         slogan: profile?.slogan,
         phone: profile?.phone,
         location: profile?.location,
-        social_links: profile?.social_links,
+        social_links: convertSocialLinks(profile?.social_links),
       };
     }
 
@@ -332,20 +347,6 @@ export async function getCurrentUser(): Promise<User | null> {
     const userRole = profile?.role || user.user_metadata?.role || 'student';
 
     console.log('Current user profile loaded:', userName);
-    
-    // Fix for social_links type casting - properly handle Json type
-    let socialLinks: Record<string, string> = {};
-    if (profile?.social_links && 
-        typeof profile.social_links === 'object' && 
-        profile.social_links !== null &&
-        !Array.isArray(profile.social_links)) {
-      try {
-        // Cast to Record<string, string> only if it's an object
-        socialLinks = profile.social_links as Record<string, string>;
-      } catch (e) {
-        socialLinks = {};
-      }
-    }
 
     return {
       id: user.id,
@@ -357,7 +358,7 @@ export async function getCurrentUser(): Promise<User | null> {
       slogan: profile?.slogan,
       phone: profile?.phone,
       location: profile?.location,
-      social_links: socialLinks,
+      social_links: convertSocialLinks(profile?.social_links),
     };
   } catch (error) {
     console.error('Get current user error:', error);
@@ -396,7 +397,7 @@ export async function updateProfile(userId: string, updates: Partial<User>): Pro
       slogan: data.slogan,
       phone: data.phone,
       location: data.location,
-      social_links: data.social_links,
+      social_links: convertSocialLinks(data.social_links),
     };
   } catch (error) {
     console.error('Update profile error:', error);
@@ -483,11 +484,7 @@ export async function getUsers(): Promise<User[]> {
       slogan: profile.slogan,
       phone: profile.phone,
       location: profile.location,
-      social_links: typeof profile.social_links === 'object' && 
-        profile.social_links !== null && 
-        !Array.isArray(profile.social_links)
-        ? (profile.social_links as Record<string, string>) 
-        : {},
+      social_links: convertSocialLinks(profile.social_links),
     }));
   } catch (error) {
     console.error('Get users error:', error);
