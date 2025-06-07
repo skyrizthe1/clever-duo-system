@@ -1,538 +1,561 @@
 
 import React, { useState, useRef } from 'react';
-import { Header } from '@/components/Header';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { getCurrentUser, updateProfile, uploadAvatar } from '@/services/api';
+import { Header } from '@/components/Header';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { toast } from 'sonner';
-import { Camera, User, MapPin, Phone, Globe } from 'lucide-react';
+import { Separator } from '@/components/ui/separator';
+import { Badge } from '@/components/ui/badge';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogTrigger,
 } from '@/components/ui/dialog';
-import { Switch } from '@/components/ui/switch';
+import { toast } from 'sonner';
+import { 
+  User, 
+  Mail, 
+  Phone, 
+  MapPin, 
+  Camera, 
+  Edit3, 
+  Save, 
+  X,
+  UserCircle,
+  Quote,
+  Github,
+  Linkedin,
+  Twitter,
+  Globe,
+  Calendar
+} from 'lucide-react';
 
 const Profile = () => {
-  const { data: currentUser, isLoading } = useQuery({
-    queryKey: ['currentUser'],
-    queryFn: getCurrentUser
-  });
-
-  const queryClient = useQueryClient();
+  const [isEditing, setIsEditing] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const [profileData, setProfileData] = useState({
+  const queryClient = useQueryClient();
+  
+  const [formData, setFormData] = useState({
     name: '',
     bio: '',
     slogan: '',
     phone: '',
     location: '',
-    social_links: {} as Record<string, string>,
+    social_links: {
+      github: '',
+      linkedin: '',
+      twitter: '',
+      website: ''
+    }
   });
 
-  const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
-  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
-  const [isPrivacyOpen, setIsPrivacyOpen] = useState(false);
-  const [passwordData, setPasswordData] = useState({
-    currentPassword: '',
-    newPassword: '',
-    confirmPassword: '',
-  });
-  const [notificationSettings, setNotificationSettings] = useState({
-    emailNotifications: true,
-    examReminders: true,
-    gradeNotifications: true,
-    systemUpdates: false,
-  });
-  const [privacySettings, setPrivacySettings] = useState({
-    showProfileToOthers: true,
-    allowDataCollection: true,
-    shareActivityWithTeachers: true,
+  const { data: currentUser, isLoading } = useQuery({
+    queryKey: ['currentUser'],
+    queryFn: getCurrentUser
   });
 
   React.useEffect(() => {
     if (currentUser) {
-      setProfileData({
+      setFormData({
         name: currentUser.name || '',
         bio: currentUser.bio || '',
         slogan: currentUser.slogan || '',
         phone: currentUser.phone || '',
         location: currentUser.location || '',
-        social_links: currentUser.social_links || {},
+        social_links: {
+          github: currentUser.social_links?.github || '',
+          linkedin: currentUser.social_links?.linkedin || '',
+          twitter: currentUser.social_links?.twitter || '',
+          website: currentUser.social_links?.website || ''
+        }
       });
     }
   }, [currentUser]);
 
-  const updateProfileMutation = useMutation({
-    mutationFn: (updates: any) => updateProfile(currentUser!.id, updates),
-    onSuccess: () => {
+  const handleInputChange = (field: string, value: string) => {
+    if (field.startsWith('social_')) {
+      const socialField = field.replace('social_', '');
+      setFormData(prev => ({
+        ...prev,
+        social_links: {
+          ...prev.social_links,
+          [socialField]: value
+        }
+      }));
+    } else {
+      setFormData(prev => ({ ...prev, [field]: value }));
+    }
+  };
+
+  const handleSave = async () => {
+    if (!currentUser) return;
+    
+    try {
+      await updateProfile(currentUser.id, {
+        ...formData,
+        email: currentUser.email,
+        role: currentUser.role,
+        id: currentUser.id
+      });
+      
       queryClient.invalidateQueries({ queryKey: ['currentUser'] });
-      toast.success('Profile updated successfully');
-    }
-  });
-
-  const uploadAvatarMutation = useMutation({
-    mutationFn: ({ userId, file }: { userId: string; file: File }) => uploadAvatar(userId, file),
-    onSuccess: (avatarUrl) => {
-      updateProfileMutation.mutate({ avatar: avatarUrl });
-    }
-  });
-
-  const handleProfileUpdate = (e: React.FormEvent) => {
-    e.preventDefault();
-    updateProfileMutation.mutate(profileData);
-  };
-
-  const handleAvatarUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file && currentUser) {
-      uploadAvatarMutation.mutate({ userId: currentUser.id, file });
+      setIsEditing(false);
+    } catch (error) {
+      console.error('Failed to update profile:', error);
     }
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setProfileData(prev => ({ ...prev, [name]: value }));
+  const handleCancel = () => {
+    if (currentUser) {
+      setFormData({
+        name: currentUser.name || '',
+        bio: currentUser.bio || '',
+        slogan: currentUser.slogan || '',
+        phone: currentUser.phone || '',
+        location: currentUser.location || '',
+        social_links: {
+          github: currentUser.social_links?.github || '',
+          linkedin: currentUser.social_links?.linkedin || '',
+          twitter: currentUser.social_links?.twitter || '',
+          website: currentUser.social_links?.website || ''
+        }
+      });
+    }
+    setIsEditing(false);
+    setPreviewUrl(null);
   };
 
-  const handleSocialLinkChange = (platform: string, value: string) => {
-    setProfileData(prev => ({
-      ...prev,
-      social_links: { ...prev.social_links, [platform]: value }
-    }));
-  };
+  const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !currentUser) return;
 
-  const handlePasswordChange = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (passwordData.newPassword !== passwordData.confirmPassword) {
-      toast.error("New passwords don't match");
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please select an image file');
       return;
     }
-    
-    if (passwordData.newPassword.length < 6) {
-      toast.error("Password must be at least 6 characters");
+
+    // Validate file size (5MB max)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('File size must be less than 5MB');
       return;
     }
-    
-    toast.success('Password changed successfully');
-    setIsChangePasswordOpen(false);
-    setPasswordData({
-      currentPassword: '',
-      newPassword: '',
-      confirmPassword: '',
-    });
+
+    // Show preview
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      setPreviewUrl(e.target?.result as string);
+    };
+    reader.readAsDataURL(file);
+
+    setIsUploading(true);
+    try {
+      const avatarUrl = await uploadAvatar(currentUser.id, file);
+      await updateProfile(currentUser.id, {
+        ...currentUser,
+        avatar: avatarUrl
+      });
+      
+      queryClient.invalidateQueries({ queryKey: ['currentUser'] });
+      toast.success('Profile picture updated successfully');
+      setPreviewUrl(null);
+    } catch (error) {
+      console.error('Failed to upload avatar:', error);
+      setPreviewUrl(null);
+    } finally {
+      setIsUploading(false);
+    }
   };
 
-  const handlePasswordInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setPasswordData(prev => ({
-      ...prev,
-      [name]: value
-    }));
+  const getInitials = (name: string) => {
+    return name
+      .split(' ')
+      .map(n => n[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
   };
 
-  const handleNotificationToggle = (setting: keyof typeof notificationSettings) => {
-    setNotificationSettings(prev => ({
-      ...prev,
-      [setting]: !prev[setting]
-    }));
+  const getRoleColor = (role: string) => {
+    switch (role) {
+      case 'admin':
+        return 'bg-red-100 text-red-800 border-red-200';
+      case 'teacher':
+        return 'bg-blue-100 text-blue-800 border-blue-200';
+      case 'student':
+        return 'bg-green-100 text-green-800 border-green-200';
+      default:
+        return 'bg-gray-100 text-gray-800 border-gray-200';
+    }
   };
 
-  const handlePrivacyToggle = (setting: keyof typeof privacySettings) => {
-    setPrivacySettings(prev => ({
-      ...prev,
-      [setting]: !prev[setting]
-    }));
-  };
-
-  const saveNotificationSettings = () => {
-    toast.success('Notification settings updated');
-    setIsNotificationsOpen(false);
-  };
-
-  const savePrivacySettings = () => {
-    toast.success('Privacy settings updated');
-    setIsPrivacyOpen(false);
+  const getSocialIcon = (platform: string) => {
+    switch (platform) {
+      case 'github':
+        return <Github className="h-4 w-4" />;
+      case 'linkedin':
+        return <Linkedin className="h-4 w-4" />;
+      case 'twitter':
+        return <Twitter className="h-4 w-4" />;
+      case 'website':
+        return <Globe className="h-4 w-4" />;
+      default:
+        return <Globe className="h-4 w-4" />;
+    }
   };
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex flex-col bg-background">
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
         <Header />
-        <main className="flex-1 flex items-center justify-center">
-          <p>Loading...</p>
-        </main>
+        <div className="container mx-auto px-4 py-8">
+          <div className="text-center">Loading...</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!currentUser) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
+        <Header />
+        <div className="container mx-auto px-4 py-8">
+          <div className="text-center">Please log in to view your profile</div>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-background">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
       <Header />
-      <main className="flex-1 container mx-auto px-4 py-6">
-        <h1 className="text-2xl font-bold mb-6">My Profile</h1>
-        
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2">
-            <Card>
-              <CardHeader>
-                <CardTitle>Personal Information</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <form onSubmit={handleProfileUpdate} className="space-y-6">
-                  <div className="flex items-center space-x-4">
-                    <div className="relative">
-                      <Avatar className="h-20 w-20">
-                        <AvatarImage src={currentUser?.avatar} alt={currentUser?.name} />
-                        <AvatarFallback>
-                          <User className="h-8 w-8" />
-                        </AvatarFallback>
-                      </Avatar>
+      <div className="container mx-auto px-4 py-8">
+        <div className="max-w-4xl mx-auto space-y-6">
+          {/* Profile Header */}
+          <Card className="overflow-hidden border-0 shadow-xl bg-white/80 backdrop-blur-sm">
+            <div className="h-32 bg-gradient-to-r from-blue-600 to-purple-600"></div>
+            <CardContent className="relative px-6 pb-6">
+              <div className="flex flex-col sm:flex-row items-start sm:items-end gap-4 -mt-16">
+                {/* Avatar Section */}
+                <div className="relative group">
+                  <Avatar className="h-32 w-32 border-4 border-white shadow-xl">
+                    <AvatarImage 
+                      src={previewUrl || currentUser.avatar} 
+                      alt={currentUser.name}
+                      className="object-cover"
+                    />
+                    <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-500 text-white text-2xl font-bold">
+                      {getInitials(currentUser.name)}
+                    </AvatarFallback>
+                  </Avatar>
+                  
+                  <Dialog>
+                    <DialogTrigger asChild>
                       <Button
-                        type="button"
                         size="sm"
-                        className="absolute -bottom-2 -right-2 h-8 w-8 rounded-full"
-                        onClick={() => fileInputRef.current?.click()}
-                        disabled={uploadAvatarMutation.isPending}
+                        className="absolute bottom-2 right-2 rounded-full h-10 w-10 p-0 bg-white shadow-lg hover:bg-gray-50 text-gray-700"
+                        disabled={isUploading}
                       >
-                        <Camera className="h-4 w-4" />
+                        {isUploading ? (
+                          <div className="animate-spin rounded-full h-4 w-4 border-2 border-gray-400 border-t-transparent" />
+                        ) : (
+                          <Camera className="h-4 w-4" />
+                        )}
                       </Button>
-                      <input
-                        ref={fileInputRef}
-                        type="file"
-                        accept="image/*"
-                        onChange={handleAvatarUpload}
-                        className="hidden"
-                      />
-                    </div>
-                    <div>
-                      <h3 className="text-lg font-semibold">{currentUser?.name}</h3>
-                      <p className="text-sm text-muted-foreground">{currentUser?.email}</p>
-                      <p className="text-sm text-muted-foreground capitalize">{currentUser?.role}</p>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="name">Full Name</Label>
-                      <Input 
-                        id="name" 
-                        name="name"
-                        value={profileData.name} 
-                        onChange={handleInputChange}
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="email">Email</Label>
-                      <Input id="email" type="email" value={currentUser?.email || ''} readOnly />
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="slogan">Slogan</Label>
-                    <Input 
-                      id="slogan" 
-                      name="slogan"
-                      placeholder="Your personal motto or slogan"
-                      value={profileData.slogan} 
-                      onChange={handleInputChange}
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="bio">Bio</Label>
-                    <Textarea 
-                      id="bio" 
-                      name="bio"
-                      placeholder="Tell us about yourself..."
-                      value={profileData.bio} 
-                      onChange={handleInputChange}
-                      rows={4}
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="phone">Phone</Label>
-                      <div className="relative">
-                        <Phone className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                        <Input 
-                          id="phone" 
-                          name="phone"
-                          placeholder="+1 (555) 123-4567"
-                          value={profileData.phone} 
-                          onChange={handleInputChange}
-                          className="pl-10"
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>Update Profile Picture</DialogTitle>
+                        <DialogDescription>
+                          Choose a new profile picture. Supported formats: JPG, PNG, GIF (max 5MB)
+                        </DialogDescription>
+                      </DialogHeader>
+                      <div className="space-y-4">
+                        <Input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleFileSelect}
+                          ref={fileInputRef}
                         />
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="location">Location</Label>
-                      <div className="relative">
-                        <MapPin className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                        <Input 
-                          id="location" 
-                          name="location"
-                          placeholder="City, Country"
-                          value={profileData.location} 
-                          onChange={handleInputChange}
-                          className="pl-10"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="space-y-4">
-                    <Label>Social Links</Label>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {['twitter', 'linkedin', 'github', 'website'].map((platform) => (
-                        <div key={platform} className="space-y-2">
-                          <Label htmlFor={platform} className="capitalize">{platform}</Label>
-                          <div className="relative">
-                            <Globe className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                            <Input 
-                              id={platform}
-                              placeholder={`Your ${platform} URL`}
-                              value={profileData.social_links[platform] || ''} 
-                              onChange={(e) => handleSocialLinkChange(platform, e.target.value)}
-                              className="pl-10"
-                            />
+                        {previewUrl && (
+                          <div className="flex justify-center">
+                            <Avatar className="h-24 w-24">
+                              <AvatarImage src={previewUrl} alt="Preview" />
+                            </Avatar>
                           </div>
+                        )}
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+                </div>
+
+                {/* User Info */}
+                <div className="flex-1 space-y-2">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                    <div>
+                      <h1 className="text-3xl font-bold text-gray-900">{currentUser.name}</h1>
+                      <p className="text-gray-600">{currentUser.email}</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge className={`px-3 py-1 ${getRoleColor(currentUser.role)}`}>
+                        {currentUser.role.charAt(0).toUpperCase() + currentUser.role.slice(1)}
+                      </Badge>
+                      {!isEditing ? (
+                        <Button 
+                          onClick={() => setIsEditing(true)} 
+                          variant="outline"
+                          className="flex items-center gap-2"
+                        >
+                          <Edit3 className="h-4 w-4" />
+                          Edit Profile
+                        </Button>
+                      ) : (
+                        <div className="flex gap-2">
+                          <Button 
+                            onClick={handleSave} 
+                            className="flex items-center gap-2"
+                          >
+                            <Save className="h-4 w-4" />
+                            Save
+                          </Button>
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button variant="outline">
+                                <X className="h-4 w-4" />
+                                Cancel
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Discard Changes?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Are you sure you want to discard your changes? This action cannot be undone.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Keep Editing</AlertDialogCancel>
+                                <AlertDialogAction onClick={handleCancel}>
+                                  Discard Changes
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
                         </div>
-                      ))}
+                      )}
                     </div>
                   </div>
                   
-                  <Button 
-                    type="submit" 
-                    className="mt-4"
-                    disabled={updateProfileMutation.isPending}
-                  >
-                    {updateProfileMutation.isPending ? 'Saving...' : 'Save Changes'}
-                  </Button>
-                </form>
-              </CardContent>
-            </Card>
-          </div>
-          
-          <div>
-            <Card>
-              <CardHeader>
-                <CardTitle>Account Settings</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <Button 
-                  className="w-full" 
-                  variant="outline"
-                  onClick={() => setIsChangePasswordOpen(true)}
-                >
-                  Change Password
-                </Button>
-                <Button 
-                  className="w-full" 
-                  variant="outline"
-                  onClick={() => setIsNotificationsOpen(true)}
-                >
-                  Notification Settings
-                </Button>
-                <Button 
-                  className="w-full" 
-                  variant="outline"
-                  onClick={() => setIsPrivacyOpen(true)}
-                >
-                  Privacy Settings
-                </Button>
-              </CardContent>
-            </Card>
+                  {currentUser.slogan && (
+                    <div className="flex items-center gap-2 text-gray-600 italic">
+                      <Quote className="h-4 w-4" />
+                      <span>"{currentUser.slogan}"</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Main Profile Information */}
+            <div className="lg:col-span-2 space-y-6">
+              <Card className="border-0 shadow-lg bg-white/80 backdrop-blur-sm">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <UserCircle className="h-5 w-5" />
+                    Personal Information
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="name">Full Name</Label>
+                      {isEditing ? (
+                        <Input
+                          id="name"
+                          value={formData.name}
+                          onChange={(e) => handleInputChange('name', e.target.value)}
+                          placeholder="Enter your full name"
+                        />
+                      ) : (
+                        <div className="flex items-center gap-2 mt-1">
+                          <User className="h-4 w-4 text-gray-500" />
+                          <span>{currentUser.name}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    <div>
+                      <Label htmlFor="email">Email</Label>
+                      <div className="flex items-center gap-2 mt-1">
+                        <Mail className="h-4 w-4 text-gray-500" />
+                        <span className="text-gray-600">{currentUser.email}</span>
+                      </div>
+                    </div>
+
+                    <div>
+                      <Label htmlFor="phone">Phone</Label>
+                      {isEditing ? (
+                        <Input
+                          id="phone"
+                          value={formData.phone}
+                          onChange={(e) => handleInputChange('phone', e.target.value)}
+                          placeholder="Enter your phone number"
+                        />
+                      ) : (
+                        <div className="flex items-center gap-2 mt-1">
+                          <Phone className="h-4 w-4 text-gray-500" />
+                          <span>{currentUser.phone || 'Not provided'}</span>
+                        </div>
+                      )}
+                    </div>
+
+                    <div>
+                      <Label htmlFor="location">Location</Label>
+                      {isEditing ? (
+                        <Input
+                          id="location"
+                          value={formData.location}
+                          onChange={(e) => handleInputChange('location', e.target.value)}
+                          placeholder="Enter your location"
+                        />
+                      ) : (
+                        <div className="flex items-center gap-2 mt-1">
+                          <MapPin className="h-4 w-4 text-gray-500" />
+                          <span>{currentUser.location || 'Not provided'}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="slogan">Personal Slogan</Label>
+                    {isEditing ? (
+                      <Input
+                        id="slogan"
+                        value={formData.slogan}
+                        onChange={(e) => handleInputChange('slogan', e.target.value)}
+                        placeholder="Enter a personal slogan or motto"
+                      />
+                    ) : (
+                      <div className="flex items-center gap-2 mt-1">
+                        <Quote className="h-4 w-4 text-gray-500" />
+                        <span className="italic">{currentUser.slogan || 'No slogan set'}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  <div>
+                    <Label htmlFor="bio">Biography</Label>
+                    {isEditing ? (
+                      <Textarea
+                        id="bio"
+                        value={formData.bio}
+                        onChange={(e) => handleInputChange('bio', e.target.value)}
+                        placeholder="Tell us about yourself..."
+                        rows={4}
+                      />
+                    ) : (
+                      <div className="mt-1">
+                        <p className="text-gray-700 whitespace-pre-wrap">
+                          {currentUser.bio || 'No biography provided.'}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Sidebar */}
+            <div className="space-y-6">
+              {/* Social Links */}
+              <Card className="border-0 shadow-lg bg-white/80 backdrop-blur-sm">
+                <CardHeader>
+                  <CardTitle>Social Links</CardTitle>
+                  <CardDescription>Connect your social media profiles</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {Object.entries(formData.social_links).map(([platform, url]) => (
+                    <div key={platform}>
+                      <Label htmlFor={`social_${platform}`} className="capitalize">
+                        {platform === 'website' ? 'Website' : platform}
+                      </Label>
+                      {isEditing ? (
+                        <Input
+                          id={`social_${platform}`}
+                          value={url}
+                          onChange={(e) => handleInputChange(`social_${platform}`, e.target.value)}
+                          placeholder={`Your ${platform} URL`}
+                        />
+                      ) : (
+                        <div className="flex items-center gap-2 mt-1">
+                          {getSocialIcon(platform)}
+                          {url ? (
+                            <a 
+                              href={url} 
+                              target="_blank" 
+                              rel="noopener noreferrer"
+                              className="text-blue-600 hover:underline truncate"
+                            >
+                              {url}
+                            </a>
+                          ) : (
+                            <span className="text-gray-500">Not provided</span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+
+              {/* Account Stats */}
+              <Card className="border-0 shadow-lg bg-white/80 backdrop-blur-sm">
+                <CardHeader>
+                  <CardTitle>Account Information</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-600">Role</span>
+                    <Badge className={getRoleColor(currentUser.role)}>
+                      {currentUser.role.charAt(0).toUpperCase() + currentUser.role.slice(1)}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-gray-600">Member Since</span>
+                    <div className="flex items-center gap-1 text-sm">
+                      <Calendar className="h-3 w-3" />
+                      <span>Recent</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
           </div>
         </div>
-      </main>
-
-      {/* Change Password Dialog */}
-      <Dialog open={isChangePasswordOpen} onOpenChange={setIsChangePasswordOpen}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Change Password</DialogTitle>
-            <DialogDescription>
-              Enter your current password and a new password below.
-            </DialogDescription>
-          </DialogHeader>
-          <form onSubmit={handlePasswordChange} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="currentPassword">Current Password</Label>
-              <Input 
-                id="currentPassword"
-                name="currentPassword"
-                type="password"
-                value={passwordData.currentPassword}
-                onChange={handlePasswordInputChange}
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="newPassword">New Password</Label>
-              <Input 
-                id="newPassword"
-                name="newPassword"
-                type="password"
-                value={passwordData.newPassword}
-                onChange={handlePasswordInputChange}
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="confirmPassword">Confirm New Password</Label>
-              <Input 
-                id="confirmPassword"
-                name="confirmPassword"
-                type="password"
-                value={passwordData.confirmPassword}
-                onChange={handlePasswordInputChange}
-                required
-              />
-            </div>
-            <DialogFooter>
-              <Button type="submit">Change Password</Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
-
-      {/* Notification Settings Dialog */}
-      <Dialog open={isNotificationsOpen} onOpenChange={setIsNotificationsOpen}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Notification Settings</DialogTitle>
-            <DialogDescription>
-              Manage how you receive notifications.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="py-4 space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="space-y-0.5">
-                <Label htmlFor="email-notifications">Email Notifications</Label>
-                <p className="text-sm text-muted-foreground">
-                  Receive emails about your account activity
-                </p>
-              </div>
-              <Switch 
-                id="email-notifications"
-                checked={notificationSettings.emailNotifications}
-                onCheckedChange={() => handleNotificationToggle('emailNotifications')}
-              />
-            </div>
-            <div className="flex items-center justify-between">
-              <div className="space-y-0.5">
-                <Label htmlFor="exam-reminders">Exam Reminders</Label>
-                <p className="text-sm text-muted-foreground">
-                  Get notifications before your exams start
-                </p>
-              </div>
-              <Switch 
-                id="exam-reminders"
-                checked={notificationSettings.examReminders}
-                onCheckedChange={() => handleNotificationToggle('examReminders')}
-              />
-            </div>
-            <div className="flex items-center justify-between">
-              <div className="space-y-0.5">
-                <Label htmlFor="grade-notifications">Grade Notifications</Label>
-                <p className="text-sm text-muted-foreground">
-                  Be notified when your grades are available
-                </p>
-              </div>
-              <Switch 
-                id="grade-notifications"
-                checked={notificationSettings.gradeNotifications}
-                onCheckedChange={() => handleNotificationToggle('gradeNotifications')}
-              />
-            </div>
-            <div className="flex items-center justify-between">
-              <div className="space-y-0.5">
-                <Label htmlFor="system-updates">System Updates</Label>
-                <p className="text-sm text-muted-foreground">
-                  Receive updates about system changes
-                </p>
-              </div>
-              <Switch 
-                id="system-updates"
-                checked={notificationSettings.systemUpdates}
-                onCheckedChange={() => handleNotificationToggle('systemUpdates')}
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button onClick={saveNotificationSettings}>Save Changes</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Privacy Settings Dialog */}
-      <AlertDialog open={isPrivacyOpen} onOpenChange={setIsPrivacyOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Privacy Settings</AlertDialogTitle>
-            <AlertDialogDescription>
-              Manage your privacy preferences and data sharing options.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <div className="py-4 space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="space-y-0.5">
-                <Label htmlFor="show-profile">Profile Visibility</Label>
-                <p className="text-sm text-muted-foreground">
-                  Allow other users to see your profile information
-                </p>
-              </div>
-              <Switch 
-                id="show-profile"
-                checked={privacySettings.showProfileToOthers}
-                onCheckedChange={() => handlePrivacyToggle('showProfileToOthers')}
-              />
-            </div>
-            <div className="flex items-center justify-between">
-              <div className="space-y-0.5">
-                <Label htmlFor="data-collection">Data Collection</Label>
-                <p className="text-sm text-muted-foreground">
-                  Allow us to collect usage data to improve our services
-                </p>
-              </div>
-              <Switch 
-                id="data-collection"
-                checked={privacySettings.allowDataCollection}
-                onCheckedChange={() => handlePrivacyToggle('allowDataCollection')}
-              />
-            </div>
-            <div className="flex items-center justify-between">
-              <div className="space-y-0.5">
-                <Label htmlFor="share-activity">Share Activity</Label>
-                <p className="text-sm text-muted-foreground">
-                  Allow teachers to view your learning activity
-                </p>
-              </div>
-              <Switch 
-                id="share-activity"
-                checked={privacySettings.shareActivityWithTeachers}
-                onCheckedChange={() => handlePrivacyToggle('shareActivityWithTeachers')}
-              />
-            </div>
-          </div>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={savePrivacySettings}>Save Changes</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      </div>
     </div>
   );
 };
