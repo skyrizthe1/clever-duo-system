@@ -342,7 +342,9 @@ export async function getCurrentUser(): Promise<User | null> {
       slogan: profile?.slogan,
       phone: profile?.phone,
       location: profile?.location,
-      social_links: (profile?.social_links as Record<string, string>) || {},
+      social_links: typeof profile?.social_links === 'object' && profile?.social_links !== null 
+        ? (profile.social_links as Record<string, string>) 
+        : {},
     };
   } catch (error) {
     console.error('Get current user error:', error);
@@ -468,7 +470,9 @@ export async function getUsers(): Promise<User[]> {
       slogan: profile.slogan,
       phone: profile.phone,
       location: profile.location,
-      social_links: (profile.social_links as Record<string, string>) || {},
+      social_links: typeof profile.social_links === 'object' && profile.social_links !== null 
+        ? (profile.social_links as Record<string, string>) 
+        : {},
     }));
   } catch (error) {
     console.error('Get users error:', error);
@@ -616,7 +620,9 @@ export async function getQuestions(): Promise<Question[]> {
       type: question.type,
       content: question.content,
       options: question.options,
-      correctAnswer: question.correct_answer as string | string[],
+      correctAnswer: Array.isArray(question.correct_answer) 
+        ? question.correct_answer as string[]
+        : question.correct_answer as string,
       points: question.points,
       category: question.category,
       createdBy: question.created_by,
@@ -691,7 +697,9 @@ export async function updateQuestion(questionId: string, updates: Partial<Questi
       type: data.type,
       content: data.content,
       options: data.options,
-      correctAnswer: data.correct_answer as string | string[],
+      correctAnswer: Array.isArray(data.correct_answer) 
+        ? data.correct_answer as string[]
+        : data.correct_answer as string,
       points: data.points,
       category: data.category,
       createdBy: data.created_by,
@@ -849,7 +857,11 @@ export async function getExamSubmissions(): Promise<ExamSubmission[]> {
   try {
     const { data, error } = await supabase
       .from('exam_submissions')
-      .select('*')
+      .select(`
+        *,
+        exams!inner(title),
+        profiles!inner(name)
+      `)
       .order('submitted_at', { ascending: false });
 
     if (error) throw error;
@@ -857,17 +869,23 @@ export async function getExamSubmissions(): Promise<ExamSubmission[]> {
     return data.map(submission => ({
       id: submission.id,
       exam_id: submission.exam_id,
-      exam_title: submission.exam_title || '',
+      exam_title: submission.exams?.title || 'Unknown Exam',
       student_id: submission.student_id,
-      student_name: submission.student_name || '',
+      student_name: submission.profiles?.name || 'Unknown Student',
       submitted_at: new Date(submission.submitted_at),
       graded: submission.graded,
       score: submission.score,
       total_points: submission.total_points,
-      answers: (submission.answers as Record<string, any>) || {},
+      answers: typeof submission.answers === 'object' && submission.answers !== null 
+        ? (submission.answers as Record<string, any>) 
+        : {},
       time_spent: submission.time_spent,
-      feedback: (submission.feedback as Record<string, string>) || {},
-      individual_scores: (submission.individual_scores as Record<string, number>) || {},
+      feedback: typeof submission.feedback === 'object' && submission.feedback !== null 
+        ? (submission.feedback as Record<string, string>) 
+        : {},
+      individual_scores: typeof submission.individual_scores === 'object' && submission.individual_scores !== null 
+        ? (submission.individual_scores as Record<string, number>) 
+        : {},
     }));
   } catch (error) {
     console.error('Get exam submissions error:', error);
@@ -882,9 +900,7 @@ export async function submitExam(submission: Omit<ExamSubmission, "id">): Promis
       .from('exam_submissions')
       .insert({
         exam_id: submission.exam_id,
-        exam_title: submission.exam_title,
         student_id: submission.student_id,
-        student_name: submission.student_name,
         submitted_at: submission.submitted_at.toISOString(),
         graded: submission.graded || false,
         score: submission.score,
@@ -894,7 +910,11 @@ export async function submitExam(submission: Omit<ExamSubmission, "id">): Promis
         feedback: submission.feedback,
         individual_scores: submission.individual_scores,
       })
-      .select()
+      .select(`
+        *,
+        exams!inner(title),
+        profiles!inner(name)
+      `)
       .single();
 
     if (error) throw error;
@@ -903,17 +923,23 @@ export async function submitExam(submission: Omit<ExamSubmission, "id">): Promis
     return {
       id: data.id,
       exam_id: data.exam_id,
-      exam_title: data.exam_title,
+      exam_title: data.exams?.title || submission.exam_title,
       student_id: data.student_id,
-      student_name: data.student_name,
+      student_name: data.profiles?.name || submission.student_name,
       submitted_at: new Date(data.submitted_at),
       graded: data.graded,
       score: data.score,
       total_points: data.total_points,
-      answers: (data.answers as Record<string, any>) || {},
+      answers: typeof data.answers === 'object' && data.answers !== null 
+        ? (data.answers as Record<string, any>) 
+        : {},
       time_spent: data.time_spent,
-      feedback: (data.feedback as Record<string, string>) || {},
-      individual_scores: (data.individual_scores as Record<string, number>) || {},
+      feedback: typeof data.feedback === 'object' && data.feedback !== null 
+        ? (data.feedback as Record<string, string>) 
+        : {},
+      individual_scores: typeof data.individual_scores === 'object' && data.individual_scores !== null 
+        ? (data.individual_scores as Record<string, number>) 
+        : {},
     };
   } catch (error) {
     console.error('Submit exam error:', error);
@@ -932,7 +958,11 @@ export async function gradeSubmission(submissionId: string, grade: number, feedb
         graded: true,
       })
       .eq('id', submissionId)
-      .select()
+      .select(`
+        *,
+        exams!inner(title),
+        profiles!inner(name)
+      `)
       .single();
 
     if (error) throw error;
@@ -941,17 +971,23 @@ export async function gradeSubmission(submissionId: string, grade: number, feedb
     return {
       id: data.id,
       exam_id: data.exam_id,
-      exam_title: data.exam_title,
+      exam_title: data.exams?.title || 'Unknown Exam',
       student_id: data.student_id,
-      student_name: data.student_name,
+      student_name: data.profiles?.name || 'Unknown Student',
       submitted_at: new Date(data.submitted_at),
       graded: data.graded,
       score: data.score,
       total_points: data.total_points,
-      answers: (data.answers as Record<string, any>) || {},
+      answers: typeof data.answers === 'object' && data.answers !== null 
+        ? (data.answers as Record<string, any>) 
+        : {},
       time_spent: data.time_spent,
-      feedback: (data.feedback as Record<string, string>) || {},
-      individual_scores: (data.individual_scores as Record<string, number>) || {},
+      feedback: typeof data.feedback === 'object' && data.feedback !== null 
+        ? (data.feedback as Record<string, string>) 
+        : {},
+      individual_scores: typeof data.individual_scores === 'object' && data.individual_scores !== null 
+        ? (data.individual_scores as Record<string, number>) 
+        : {},
     };
   } catch (error) {
     console.error('Grade submission error:', error);
