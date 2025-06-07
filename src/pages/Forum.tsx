@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Header } from '@/components/Header';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -236,7 +235,7 @@ const Forum = () => {
                               </div>
                               <div className="flex items-center space-x-1">
                                 <MessageSquare className="h-4 w-4" />
-                                <span>{post.replies_count || 0}</span>
+                                <span>0</span>
                               </div>
                             </div>
                             {categories.find(cat => cat.id === post.category_id) && (

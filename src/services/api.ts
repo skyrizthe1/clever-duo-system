@@ -342,7 +342,7 @@ export async function getCurrentUser(): Promise<User | null> {
       slogan: profile?.slogan,
       phone: profile?.phone,
       location: profile?.location,
-      social_links: profile?.social_links,
+      social_links: (profile?.social_links as Record<string, string>) || {},
     };
   } catch (error) {
     console.error('Get current user error:', error);
@@ -468,7 +468,7 @@ export async function getUsers(): Promise<User[]> {
       slogan: profile.slogan,
       phone: profile.phone,
       location: profile.location,
-      social_links: profile.social_links,
+      social_links: (profile.social_links as Record<string, string>) || {},
     }));
   } catch (error) {
     console.error('Get users error:', error);
@@ -616,7 +616,7 @@ export async function getQuestions(): Promise<Question[]> {
       type: question.type,
       content: question.content,
       options: question.options,
-      correctAnswer: question.correct_answer,
+      correctAnswer: question.correct_answer as string | string[],
       points: question.points,
       category: question.category,
       createdBy: question.created_by,
@@ -639,7 +639,7 @@ export async function createQuestion(question: Omit<Question, "id">): Promise<Qu
         type: question.type,
         content: question.content,
         options: question.options,
-        correct_answer: question.correctAnswer,
+        correct_answer: question.correctAnswer as any,
         points: question.points,
         category: question.category,
         created_by: user.id,
@@ -655,7 +655,7 @@ export async function createQuestion(question: Omit<Question, "id">): Promise<Qu
       type: data.type,
       content: data.content,
       options: data.options,
-      correctAnswer: data.correct_answer,
+      correctAnswer: data.correct_answer as string | string[],
       points: data.points,
       category: data.category,
       createdBy: data.created_by,
@@ -663,6 +663,59 @@ export async function createQuestion(question: Omit<Question, "id">): Promise<Qu
   } catch (error) {
     console.error('Create question error:', error);
     toast.error("Failed to create question");
+    throw error;
+  }
+}
+
+export async function updateQuestion(questionId: string, updates: Partial<Question>): Promise<Question> {
+  try {
+    const { data, error } = await supabase
+      .from('questions')
+      .update({
+        type: updates.type,
+        content: updates.content,
+        options: updates.options,
+        correct_answer: updates.correctAnswer as any,
+        points: updates.points,
+        category: updates.category,
+      })
+      .eq('id', questionId)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    toast.success("Question updated successfully");
+    return {
+      id: data.id,
+      type: data.type,
+      content: data.content,
+      options: data.options,
+      correctAnswer: data.correct_answer as string | string[],
+      points: data.points,
+      category: data.category,
+      createdBy: data.created_by,
+    };
+  } catch (error) {
+    console.error('Update question error:', error);
+    toast.error("Failed to update question");
+    throw error;
+  }
+}
+
+export async function deleteQuestion(questionId: string): Promise<void> {
+  try {
+    const { error } = await supabase
+      .from('questions')
+      .delete()
+      .eq('id', questionId);
+
+    if (error) throw error;
+
+    toast.success("Question deleted successfully");
+  } catch (error) {
+    console.error('Delete question error:', error);
+    toast.error("Failed to delete question");
     throw error;
   }
 }
@@ -811,10 +864,10 @@ export async function getExamSubmissions(): Promise<ExamSubmission[]> {
       graded: submission.graded,
       score: submission.score,
       total_points: submission.total_points,
-      answers: submission.answers,
+      answers: (submission.answers as Record<string, any>) || {},
       time_spent: submission.time_spent,
-      feedback: submission.feedback,
-      individual_scores: submission.individual_scores,
+      feedback: (submission.feedback as Record<string, string>) || {},
+      individual_scores: (submission.individual_scores as Record<string, number>) || {},
     }));
   } catch (error) {
     console.error('Get exam submissions error:', error);
@@ -833,7 +886,7 @@ export async function submitExam(submission: Omit<ExamSubmission, "id">): Promis
         student_id: submission.student_id,
         student_name: submission.student_name,
         submitted_at: submission.submitted_at.toISOString(),
-        graded: submission.graded,
+        graded: submission.graded || false,
         score: submission.score,
         total_points: submission.total_points,
         answers: submission.answers,
@@ -857,10 +910,10 @@ export async function submitExam(submission: Omit<ExamSubmission, "id">): Promis
       graded: data.graded,
       score: data.score,
       total_points: data.total_points,
-      answers: data.answers,
+      answers: (data.answers as Record<string, any>) || {},
       time_spent: data.time_spent,
-      feedback: data.feedback,
-      individual_scores: data.individual_scores,
+      feedback: (data.feedback as Record<string, string>) || {},
+      individual_scores: (data.individual_scores as Record<string, number>) || {},
     };
   } catch (error) {
     console.error('Submit exam error:', error);
@@ -869,20 +922,13 @@ export async function submitExam(submission: Omit<ExamSubmission, "id">): Promis
   }
 }
 
-export async function gradeSubmission(submissionId: string, gradeData: {
-  score: number;
-  total_points: number;
-  feedback?: Record<string, string>;
-  individual_scores?: Record<string, number>;
-}): Promise<ExamSubmission> {
+export async function gradeSubmission(submissionId: string, grade: number, feedbackData: Record<string, string>): Promise<ExamSubmission> {
   try {
     const { data, error } = await supabase
       .from('exam_submissions')
       .update({
-        score: gradeData.score,
-        total_points: gradeData.total_points,
-        feedback: gradeData.feedback,
-        individual_scores: gradeData.individual_scores,
+        score: grade,
+        feedback: feedbackData,
         graded: true,
       })
       .eq('id', submissionId)
@@ -902,10 +948,10 @@ export async function gradeSubmission(submissionId: string, gradeData: {
       graded: data.graded,
       score: data.score,
       total_points: data.total_points,
-      answers: data.answers,
+      answers: (data.answers as Record<string, any>) || {},
       time_spent: data.time_spent,
-      feedback: data.feedback,
-      individual_scores: data.individual_scores,
+      feedback: (data.feedback as Record<string, string>) || {},
+      individual_scores: (data.individual_scores as Record<string, number>) || {},
     };
   } catch (error) {
     console.error('Grade submission error:', error);

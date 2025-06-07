@@ -91,7 +91,12 @@ export function ExamTaking({ exam, questions, open, onOpenChange, onSubmit }: Ex
         student_name: currentUser.name,
         answers: answers,
         submitted_at: new Date(),
-        time_spent: exam.duration * 60 - timeLeft
+        time_spent: exam.duration * 60 - timeLeft,
+        graded: false,
+        score: undefined,
+        total_points: undefined,
+        feedback: undefined,
+        individual_scores: undefined,
       });
       
       // Invalidate queries to refresh data
