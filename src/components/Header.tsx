@@ -52,63 +52,63 @@ export function Header() {
                 ExamPortal
               </span>
             </Link>
-            <nav className="hidden md:flex space-x-2">
+            <nav className="hidden md:flex items-center space-x-1 bg-white/10 backdrop-blur-md rounded-full p-2 border border-white/20">
               <Link 
                 to="/" 
-                className={`px-4 py-2 rounded-full transition-all duration-300 flex items-center space-x-2 ${
+                className={`px-6 py-2 rounded-full transition-all duration-300 flex items-center space-x-2 font-medium text-sm ${
                   isActiveRoute('/') 
-                    ? 'bg-white/20 text-white shadow-lg backdrop-blur-sm' 
-                    : 'text-blue-100 hover:bg-white/10 hover:text-white'
+                    ? 'bg-white text-blue-600 shadow-lg transform scale-105' 
+                    : 'text-white/90 hover:bg-white/20 hover:text-white hover:scale-105'
                 }`}
               >
                 <BarChart3 className="h-4 w-4" />
-                <span className="font-medium">Dashboard</span>
+                <span>Dashboard</span>
               </Link>
               <Link 
                 to="/forum" 
-                className={`px-4 py-2 rounded-full transition-all duration-300 flex items-center space-x-2 ${
+                className={`px-6 py-2 rounded-full transition-all duration-300 flex items-center space-x-2 font-medium text-sm ${
                   isActiveRoute('/forum') 
-                    ? 'bg-white/20 text-white shadow-lg backdrop-blur-sm' 
-                    : 'text-blue-100 hover:bg-white/10 hover:text-white'
+                    ? 'bg-white text-blue-600 shadow-lg transform scale-105' 
+                    : 'text-white/90 hover:bg-white/20 hover:text-white hover:scale-105'
                 }`}
               >
                 <MessageSquare className="h-4 w-4" />
-                <span className="font-medium">Forum</span>
+                <span>Forum</span>
               </Link>
               <Link 
                 to="/chat" 
-                className={`px-4 py-2 rounded-full transition-all duration-300 flex items-center space-x-2 ${
+                className={`px-6 py-2 rounded-full transition-all duration-300 flex items-center space-x-2 font-medium text-sm ${
                   isActiveRoute('/chat') 
-                    ? 'bg-white/20 text-white shadow-lg backdrop-blur-sm' 
-                    : 'text-blue-100 hover:bg-white/10 hover:text-white'
+                    ? 'bg-white text-blue-600 shadow-lg transform scale-105' 
+                    : 'text-white/90 hover:bg-white/20 hover:text-white hover:scale-105'
                 }`}
               >
                 <MessageSquare className="h-4 w-4" />
-                <span className="font-medium">Chat</span>
+                <span>Chat</span>
               </Link>
               {currentUser.role === 'student' && (
                 <>
                   <Link 
                     to="/my-exams" 
-                    className={`px-4 py-2 rounded-full transition-all duration-300 flex items-center space-x-2 ${
+                    className={`px-6 py-2 rounded-full transition-all duration-300 flex items-center space-x-2 font-medium text-sm ${
                       isActiveRoute('/my-exams') 
-                        ? 'bg-white/20 text-white shadow-lg backdrop-blur-sm' 
-                        : 'text-blue-100 hover:bg-white/10 hover:text-white'
+                        ? 'bg-white text-blue-600 shadow-lg transform scale-105' 
+                        : 'text-white/90 hover:bg-white/20 hover:text-white hover:scale-105'
                     }`}
                   >
                     <BookOpen className="h-4 w-4" />
-                    <span className="font-medium">My Exams</span>
+                    <span>My Exams</span>
                   </Link>
                   <Link 
                     to="/results" 
-                    className={`px-4 py-2 rounded-full transition-all duration-300 flex items-center space-x-2 ${
+                    className={`px-6 py-2 rounded-full transition-all duration-300 flex items-center space-x-2 font-medium text-sm ${
                       isActiveRoute('/results') 
-                        ? 'bg-white/20 text-white shadow-lg backdrop-blur-sm' 
-                        : 'text-blue-100 hover:bg-white/10 hover:text-white'
+                        ? 'bg-white text-blue-600 shadow-lg transform scale-105' 
+                        : 'text-white/90 hover:bg-white/20 hover:text-white hover:scale-105'
                     }`}
                   >
                     <BarChart3 className="h-4 w-4" />
-                    <span className="font-medium">Results</span>
+                    <span>Results</span>
                   </Link>
                 </>
               )}
@@ -116,36 +116,36 @@ export function Header() {
                 <>
                   <Link 
                     to="/exams" 
-                    className={`px-4 py-2 rounded-full transition-all duration-300 flex items-center space-x-2 ${
+                    className={`px-6 py-2 rounded-full transition-all duration-300 flex items-center space-x-2 font-medium text-sm ${
                       isActiveRoute('/exams') 
-                        ? 'bg-white/20 text-white shadow-lg backdrop-blur-sm' 
-                        : 'text-blue-100 hover:bg-white/10 hover:text-white'
+                        ? 'bg-white text-blue-600 shadow-lg transform scale-105' 
+                        : 'text-white/90 hover:bg-white/20 hover:text-white hover:scale-105'
                     }`}
                   >
                     <BookOpen className="h-4 w-4" />
-                    <span className="font-medium">Exams</span>
+                    <span>Exams</span>
                   </Link>
                   <Link 
                     to="/questions" 
-                    className={`px-4 py-2 rounded-full transition-all duration-300 flex items-center space-x-2 ${
+                    className={`px-6 py-2 rounded-full transition-all duration-300 flex items-center space-x-2 font-medium text-sm ${
                       isActiveRoute('/questions') 
-                        ? 'bg-white/20 text-white shadow-lg backdrop-blur-sm' 
-                        : 'text-blue-100 hover:bg-white/10 hover:text-white'
+                        ? 'bg-white text-blue-600 shadow-lg transform scale-105' 
+                        : 'text-white/90 hover:bg-white/20 hover:text-white hover:scale-105'
                     }`}
                   >
                     <MessageSquare className="h-4 w-4" />
-                    <span className="font-medium">Questions</span>
+                    <span>Questions</span>
                   </Link>
                   <Link 
                     to="/grading" 
-                    className={`px-4 py-2 rounded-full transition-all duration-300 flex items-center space-x-2 ${
+                    className={`px-6 py-2 rounded-full transition-all duration-300 flex items-center space-x-2 font-medium text-sm ${
                       isActiveRoute('/grading') 
-                        ? 'bg-white/20 text-white shadow-lg backdrop-blur-sm' 
-                        : 'text-blue-100 hover:bg-white/10 hover:text-white'
+                        ? 'bg-white text-blue-600 shadow-lg transform scale-105' 
+                        : 'text-white/90 hover:bg-white/20 hover:text-white hover:scale-105'
                     }`}
                   >
                     <BarChart3 className="h-4 w-4" />
-                    <span className="font-medium">Grading</span>
+                    <span>Grading</span>
                   </Link>
                 </>
               )}
