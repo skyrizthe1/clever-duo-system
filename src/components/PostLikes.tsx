@@ -24,9 +24,9 @@ export function PostLikes({ postId }: PostLikesProps) {
   const toggleLikeMutation = useMutation({
     mutationFn: () => togglePostLike(postId),
     onMutate: () => {
-      // Optimistic update
-      const newIsLiked = !displayData.isLiked;
-      const newCount = newIsLiked ? displayData.count + 1 : displayData.count - 1;
+      // Fixed optimistic update - use likesData instead of displayData to avoid circular reference
+      const newIsLiked = !likesData.isLiked;
+      const newCount = newIsLiked ? likesData.count + 1 : likesData.count - 1;
       setOptimisticLike({ isLiked: newIsLiked, count: newCount });
       
       // Immediate animation
