@@ -1,5 +1,6 @@
+
 import React from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { getCurrentUser, logout } from '@/services/api';
 import { Button } from '@/components/ui/button';
@@ -11,10 +12,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { User, LogOut, Settings, MessageSquare, BookOpen, BarChart3 } from 'lucide-react';
+import { User, LogOut, Settings, MessageSquare, BookOpen, BarChart3, Sparkles } from 'lucide-react';
 
 export function Header() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { data: currentUser } = useQuery({
     queryKey: ['currentUser'],
     queryFn: getCurrentUser
@@ -37,50 +39,76 @@ export function Header() {
       .toUpperCase();
   };
 
+  const isActiveRoute = (path: string) => location.pathname === path;
+
   return (
-    <header className="bg-white shadow-sm border-b">
+    <header className="bg-gradient-to-r from-blue-600 via-purple-600 to-blue-700 shadow-xl border-b border-blue-500/30">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           <div className="flex items-center space-x-8">
-            <Link to="/" className="text-xl font-bold text-blue-600">
-              ExamPortal
+            <Link to="/" className="text-2xl font-bold text-white flex items-center space-x-2 hover:scale-105 transition-transform duration-200">
+              <Sparkles className="h-6 w-6 text-yellow-300" />
+              <span className="bg-gradient-to-r from-yellow-200 to-white bg-clip-text text-transparent">
+                ExamPortal
+              </span>
             </Link>
-            <nav className="hidden md:flex space-x-6">
+            <nav className="hidden md:flex space-x-2">
               <Link 
                 to="/" 
-                className="text-gray-700 hover:text-blue-600 transition-colors flex items-center space-x-1"
+                className={`px-4 py-2 rounded-full transition-all duration-300 flex items-center space-x-2 ${
+                  isActiveRoute('/') 
+                    ? 'bg-white/20 text-white shadow-lg backdrop-blur-sm' 
+                    : 'text-blue-100 hover:bg-white/10 hover:text-white'
+                }`}
               >
                 <BarChart3 className="h-4 w-4" />
-                <span>Dashboard</span>
+                <span className="font-medium">Dashboard</span>
               </Link>
               <Link 
                 to="/forum" 
-                className="text-gray-700 hover:text-blue-600 transition-colors flex items-center space-x-1"
+                className={`px-4 py-2 rounded-full transition-all duration-300 flex items-center space-x-2 ${
+                  isActiveRoute('/forum') 
+                    ? 'bg-white/20 text-white shadow-lg backdrop-blur-sm' 
+                    : 'text-blue-100 hover:bg-white/10 hover:text-white'
+                }`}
               >
                 <MessageSquare className="h-4 w-4" />
-                <span>Forum</span>
+                <span className="font-medium">Forum</span>
               </Link>
               <Link 
                 to="/chat" 
-                className="text-gray-700 hover:text-blue-600 transition-colors flex items-center space-x-1"
+                className={`px-4 py-2 rounded-full transition-all duration-300 flex items-center space-x-2 ${
+                  isActiveRoute('/chat') 
+                    ? 'bg-white/20 text-white shadow-lg backdrop-blur-sm' 
+                    : 'text-blue-100 hover:bg-white/10 hover:text-white'
+                }`}
               >
                 <MessageSquare className="h-4 w-4" />
-                <span>Chat</span>
+                <span className="font-medium">Chat</span>
               </Link>
               {currentUser.role === 'student' && (
                 <>
                   <Link 
                     to="/my-exams" 
-                    className="text-gray-700 hover:text-blue-600 transition-colors flex items-center space-x-1"
+                    className={`px-4 py-2 rounded-full transition-all duration-300 flex items-center space-x-2 ${
+                      isActiveRoute('/my-exams') 
+                        ? 'bg-white/20 text-white shadow-lg backdrop-blur-sm' 
+                        : 'text-blue-100 hover:bg-white/10 hover:text-white'
+                    }`}
                   >
                     <BookOpen className="h-4 w-4" />
-                    <span>My Exams</span>
+                    <span className="font-medium">My Exams</span>
                   </Link>
                   <Link 
                     to="/results" 
-                    className="text-gray-700 hover:text-blue-600 transition-colors"
+                    className={`px-4 py-2 rounded-full transition-all duration-300 flex items-center space-x-2 ${
+                      isActiveRoute('/results') 
+                        ? 'bg-white/20 text-white shadow-lg backdrop-blur-sm' 
+                        : 'text-blue-100 hover:bg-white/10 hover:text-white'
+                    }`}
                   >
-                    Results
+                    <BarChart3 className="h-4 w-4" />
+                    <span className="font-medium">Results</span>
                   </Link>
                 </>
               )}
@@ -88,21 +116,36 @@ export function Header() {
                 <>
                   <Link 
                     to="/exams" 
-                    className="text-gray-700 hover:text-blue-600 transition-colors"
+                    className={`px-4 py-2 rounded-full transition-all duration-300 flex items-center space-x-2 ${
+                      isActiveRoute('/exams') 
+                        ? 'bg-white/20 text-white shadow-lg backdrop-blur-sm' 
+                        : 'text-blue-100 hover:bg-white/10 hover:text-white'
+                    }`}
                   >
-                    Exams
+                    <BookOpen className="h-4 w-4" />
+                    <span className="font-medium">Exams</span>
                   </Link>
                   <Link 
                     to="/questions" 
-                    className="text-gray-700 hover:text-blue-600 transition-colors"
+                    className={`px-4 py-2 rounded-full transition-all duration-300 flex items-center space-x-2 ${
+                      isActiveRoute('/questions') 
+                        ? 'bg-white/20 text-white shadow-lg backdrop-blur-sm' 
+                        : 'text-blue-100 hover:bg-white/10 hover:text-white'
+                    }`}
                   >
-                    Questions
+                    <MessageSquare className="h-4 w-4" />
+                    <span className="font-medium">Questions</span>
                   </Link>
                   <Link 
                     to="/grading" 
-                    className="text-gray-700 hover:text-blue-600 transition-colors"
+                    className={`px-4 py-2 rounded-full transition-all duration-300 flex items-center space-x-2 ${
+                      isActiveRoute('/grading') 
+                        ? 'bg-white/20 text-white shadow-lg backdrop-blur-sm' 
+                        : 'text-blue-100 hover:bg-white/10 hover:text-white'
+                    }`}
                   >
-                    Grading
+                    <BarChart3 className="h-4 w-4" />
+                    <span className="font-medium">Grading</span>
                   </Link>
                 </>
               )}
@@ -112,16 +155,16 @@ export function Header() {
           <div className="flex items-center space-x-4">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="relative h-10 w-10 rounded-full">
-                  <Avatar className="h-10 w-10">
+                <Button variant="ghost" className="relative h-10 w-10 rounded-full hover:bg-white/10 transition-all duration-200">
+                  <Avatar className="h-10 w-10 ring-2 ring-white/30">
                     <AvatarImage src={currentUser.avatar} alt={currentUser.name} />
-                    <AvatarFallback className="bg-blue-500 text-white">
+                    <AvatarFallback className="bg-gradient-to-r from-blue-500 to-purple-500 text-white font-semibold">
                       {getInitials(currentUser.name)}
                     </AvatarFallback>
                   </Avatar>
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-56" align="end" forceMount>
+              <DropdownMenuContent className="w-56 bg-white/95 backdrop-blur-sm border-blue-200" align="end" forceMount>
                 <div className="flex items-center justify-start gap-2 p-2">
                   <div className="flex flex-col space-y-1 leading-none">
                     <p className="font-medium">{currentUser.name}</p>
