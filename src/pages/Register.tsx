@@ -23,6 +23,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { registerUser, UserRole } from '@/services/api';
+import { Sparkles, UserPlus } from 'lucide-react';
 
 const formSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
@@ -74,26 +75,21 @@ const Register = () => {
       
     } catch (error) {
       console.error('Registration error:', error);
-      // Don't show duplicate toast, registerUser function already shows error
     } finally {
       setIsSubmitting(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-red-50 via-pink-50 to-rose-100">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-purple-50 to-blue-100">
       <div className="w-full max-w-md p-8 space-y-8 bg-white/90 backdrop-blur-sm rounded-xl shadow-2xl border border-white/20">
         <div className="text-center">
-          {/* Exam Portal Icon */}
-          <div className="mx-auto w-20 h-20 bg-gradient-to-br from-red-500 to-pink-600 rounded-full flex items-center justify-center mb-6 shadow-lg">
-            <img 
-              src="/lovable-uploads/88594641-d55c-4c9a-99da-386bbc87288c.png" 
-              alt="Exam Portal" 
-              className="w-12 h-12 object-contain filter brightness-0 invert"
-            />
+          {/* Exam Portal Icon with gradient */}
+          <div className="mx-auto w-20 h-20 bg-gradient-to-br from-blue-500 via-purple-600 to-blue-700 rounded-full flex items-center justify-center mb-6 shadow-lg">
+            <Sparkles className="w-12 h-12 text-yellow-300" />
           </div>
-          <h1 className="text-3xl font-bold bg-gradient-to-r from-red-600 to-pink-600 bg-clip-text text-transparent">
-            Exam Portal
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-blue-700 bg-clip-text text-transparent">
+            ExamPortal
           </h1>
           <p className="text-gray-600 mt-2 font-medium">Create your account to get started</p>
         </div>
@@ -110,7 +106,7 @@ const Register = () => {
                     <Input 
                       placeholder="Enter your full name" 
                       {...field} 
-                      className="h-12 bg-white/80 border-2 border-gray-200 focus:border-red-400 focus:ring-red-200 rounded-lg transition-all duration-200"
+                      className="h-12 bg-white/80 border-2 border-gray-200 focus:border-blue-400 focus:ring-blue-200 rounded-lg transition-all duration-200"
                     />
                   </FormControl>
                   <FormMessage />
@@ -128,7 +124,7 @@ const Register = () => {
                     <Input 
                       placeholder="Enter your email" 
                       {...field} 
-                      className="h-12 bg-white/80 border-2 border-gray-200 focus:border-red-400 focus:ring-red-200 rounded-lg transition-all duration-200"
+                      className="h-12 bg-white/80 border-2 border-gray-200 focus:border-blue-400 focus:ring-blue-200 rounded-lg transition-all duration-200"
                     />
                   </FormControl>
                   <FormMessage />
@@ -147,7 +143,7 @@ const Register = () => {
                       type="password" 
                       placeholder="Enter your password" 
                       {...field} 
-                      className="h-12 bg-white/80 border-2 border-gray-200 focus:border-red-400 focus:ring-red-200 rounded-lg transition-all duration-200"
+                      className="h-12 bg-white/80 border-2 border-gray-200 focus:border-blue-400 focus:ring-blue-200 rounded-lg transition-all duration-200"
                     />
                   </FormControl>
                   <FormMessage />
@@ -166,7 +162,7 @@ const Register = () => {
                       type="password" 
                       placeholder="Confirm your password" 
                       {...field} 
-                      className="h-12 bg-white/80 border-2 border-gray-200 focus:border-red-400 focus:ring-red-200 rounded-lg transition-all duration-200"
+                      className="h-12 bg-white/80 border-2 border-gray-200 focus:border-blue-400 focus:ring-blue-200 rounded-lg transition-all duration-200"
                     />
                   </FormControl>
                   <FormMessage />
@@ -182,14 +178,14 @@ const Register = () => {
                   <FormLabel className="text-gray-700 font-semibold">Role</FormLabel>
                   <Select onValueChange={field.onChange} defaultValue={field.value}>
                     <FormControl>
-                      <SelectTrigger className="h-12 bg-white/80 border-2 border-gray-200 focus:border-red-400 focus:ring-red-200 rounded-lg transition-all duration-200">
+                      <SelectTrigger className="h-12 bg-white/80 border-2 border-gray-200 focus:border-blue-400 focus:ring-blue-200 rounded-lg transition-all duration-200">
                         <SelectValue placeholder="Select your role" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent className="bg-white/95 backdrop-blur-sm border border-gray-200 rounded-lg shadow-lg">
-                      <SelectItem value="student" className="hover:bg-red-50 cursor-pointer">Student</SelectItem>
-                      <SelectItem value="teacher" className="hover:bg-red-50 cursor-pointer">Teacher</SelectItem>
-                      <SelectItem value="admin" className="hover:bg-red-50 cursor-pointer">Admin</SelectItem>
+                      <SelectItem value="student" className="hover:bg-blue-50 cursor-pointer">Student</SelectItem>
+                      <SelectItem value="teacher" className="hover:bg-blue-50 cursor-pointer">Teacher</SelectItem>
+                      <SelectItem value="admin" className="hover:bg-blue-50 cursor-pointer">Admin</SelectItem>
                     </SelectContent>
                   </Select>
                   <FormMessage />
@@ -199,7 +195,7 @@ const Register = () => {
 
             <Button 
               type="submit" 
-              className="w-full h-12 bg-gradient-to-r from-red-500 to-pink-600 hover:from-red-600 hover:to-pink-700 text-white font-semibold rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-[1.02]" 
+              className="w-full h-12 bg-gradient-to-r from-blue-500 via-purple-600 to-blue-700 hover:from-blue-600 hover:via-purple-700 hover:to-blue-800 text-white font-semibold rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-[1.02]" 
               disabled={isSubmitting}
             >
               {isSubmitting ? (
@@ -208,7 +204,10 @@ const Register = () => {
                   <span>Creating account...</span>
                 </div>
               ) : (
-                'Create Account'
+                <div className="flex items-center space-x-2">
+                  <UserPlus className="h-4 w-4" />
+                  <span>Create Account</span>
+                </div>
               )}
             </Button>
           </form>
@@ -217,7 +216,7 @@ const Register = () => {
         <div className="text-center mt-6">
           <p className="text-sm text-gray-600">
             Already have an account? 
-            <a href="/login" className="text-red-600 hover:text-red-700 font-semibold ml-1 hover:underline transition-colors">
+            <a href="/login" className="text-blue-600 hover:text-blue-700 font-semibold ml-1 hover:underline transition-colors">
               Sign in here
             </a>
           </p>
