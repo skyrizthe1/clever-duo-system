@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getChatMessages, sendMessage } from '@/services/api';
 import { Button } from '@/components/ui/button';
@@ -19,23 +19,25 @@ interface PrivateChatProps {
 
 export function PrivateChat({ chatId, otherParticipant, currentUserId }: PrivateChatProps) {
   const [newMessage, setNewMessage] = useState('');
-  const [optimisticMessages, setOptimisticMessages] = useState<any[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const queryClient = useQueryClient();
 
   const { data: messages = [] } = useQuery({
     queryKey: ['chatMessages', chatId],
     queryFn: () => getChatMessages(chatId),
-    refetchInterval: 5000, // Reduced from 3000ms to 5000ms for better performance
+    refetchInterval: 10000, // Increased to 10 seconds for better performance
   });
-
-  // Combine real messages with optimistic messages
-  const displayMessages = [...messages, ...optimisticMessages];
 
   const sendMessageMutation = useMutation({
     mutationFn: (content: string) => sendMessage(chatId, content),
-    onMutate: (content) => {
-      // Add optimistic message immediately
+    onMutate: async (content) => {
+      // Cancel any outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ['chatMessages', chatId] });
+
+      // Snapshot the previous value
+      const previousMessages = queryClient.getQueryData(['chatMessages', chatId]) || [];
+
+      // Optimistically update with new message
       const optimisticMessage = {
         id: `temp-${Date.now()}`,
         content,
@@ -43,30 +45,42 @@ export function PrivateChat({ chatId, otherParticipant, currentUserId }: Private
         created_at: new Date().toISOString(),
         isOptimistic: true
       };
-      setOptimisticMessages(prev => [...prev, optimisticMessage]);
+
+      queryClient.setQueryData(['chatMessages', chatId], [...previousMessages, optimisticMessage]);
       setNewMessage('');
+
+      return { previousMessages };
     },
-    onSuccess: () => {
-      // Clear optimistic messages and refresh real data
-      setOptimisticMessages([]);
+    onError: (err, content, context) => {
+      // Rollback on error
+      if (context?.previousMessages) {
+        queryClient.setQueryData(['chatMessages', chatId], context.previousMessages);
+      }
+    },
+    onSettled: () => {
+      // Always refetch after success or error to sync with server
       queryClient.invalidateQueries({ queryKey: ['chatMessages', chatId] });
-    },
-    onError: () => {
-      // Remove failed optimistic message
-      setOptimisticMessages([]);
     }
   });
 
-  const handleSendMessage = (e: React.FormEvent) => {
+  const handleSendMessage = useCallback((e: React.FormEvent) => {
     e.preventDefault();
-    if (newMessage.trim() && !sendMessageMutation.isPending) {
-      sendMessageMutation.mutate(newMessage.trim());
+    const trimmedMessage = newMessage.trim();
+    if (trimmedMessage && !sendMessageMutation.isPending) {
+      sendMessageMutation.mutate(trimmedMessage);
     }
-  };
+  }, [newMessage, sendMessageMutation]);
+
+  const handleKeyPress = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSendMessage(e as any);
+    }
+  }, [handleSendMessage]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [displayMessages]);
+  }, [messages]);
 
   return (
     <div className="flex flex-col h-96 bg-white/90 backdrop-blur-sm border border-white/20 rounded-xl shadow-xl">
@@ -83,7 +97,7 @@ export function PrivateChat({ chatId, otherParticipant, currentUserId }: Private
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-gradient-to-br from-white/50 to-blue-50/30">
-        {displayMessages.map((message) => (
+        {messages.map((message) => (
           <div
             key={message.id}
             className={`flex ${message.sender_id === currentUserId ? 'justify-end' : 'justify-start'}`}
@@ -113,6 +127,7 @@ export function PrivateChat({ chatId, otherParticipant, currentUserId }: Private
           <Input
             value={newMessage}
             onChange={(e) => setNewMessage(e.target.value)}
+            onKeyPress={handleKeyPress}
             placeholder="Type a message..."
             className="flex-1 bg-white/80 border-white/30 focus:border-blue-400 focus:ring-blue-200"
             disabled={sendMessageMutation.isPending}
