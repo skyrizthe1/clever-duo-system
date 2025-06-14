@@ -8,6 +8,7 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Profile from "./pages/Profile";
 import Forum from "./pages/Forum";
+import Chat from "./pages/Chat";
 import ResetPassword from "./pages/ResetPassword";
 import Questions from "./pages/Questions";
 import Exams from "./pages/Exams";
@@ -30,6 +31,7 @@ function App() {
             <Route path="/register" element={<Register />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/forum" element={<Forum />} />
+            <Route path="/chat" element={<Chat />} />
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/questions" element={<Questions />} />
             <Route path="/exams" element={<Exams />} />

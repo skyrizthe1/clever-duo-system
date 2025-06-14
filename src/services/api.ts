@@ -1354,3 +1354,333 @@ export async function processPasswordRecoveryRequest(
     throw error;
   }
 }
+
+// Forum post likes functions
+export async function togglePostLike(postId: string): Promise<boolean> {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('User not authenticated');
+
+    // Check if user already liked the post
+    const { data: existingLike } = await supabase
+      .from('forum_post_likes')
+      .select('id')
+      .eq('post_id', postId)
+      .eq('user_id', user.id)
+      .single();
+
+    if (existingLike) {
+      // Unlike the post
+      const { error } = await supabase
+        .from('forum_post_likes')
+        .delete()
+        .eq('post_id', postId)
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+      return false; // Not liked anymore
+    } else {
+      // Like the post
+      const { error } = await supabase
+        .from('forum_post_likes')
+        .insert({
+          post_id: postId,
+          user_id: user.id,
+        });
+
+      if (error) throw error;
+      return true; // Liked
+    }
+  } catch (error) {
+    console.error('Toggle post like error:', error);
+    toast.error("Failed to toggle like");
+    throw error;
+  }
+}
+
+export async function getPostLikes(postId: string): Promise<{ count: number; isLiked: boolean }> {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    // Get total likes count
+    const { count, error: countError } = await supabase
+      .from('forum_post_likes')
+      .select('*', { count: 'exact', head: true })
+      .eq('post_id', postId);
+
+    if (countError) throw countError;
+
+    let isLiked = false;
+    if (user) {
+      // Check if current user liked the post
+      const { data: userLike } = await supabase
+        .from('forum_post_likes')
+        .select('id')
+        .eq('post_id', postId)
+        .eq('user_id', user.id)
+        .single();
+
+      isLiked = !!userLike;
+    }
+
+    return { count: count || 0, isLiked };
+  } catch (error) {
+    console.error('Get post likes error:', error);
+    return { count: 0, isLiked: false };
+  }
+}
+
+// Forum post comments functions
+export async function getPostComments(postId: string): Promise<any[]> {
+  try {
+    const { data, error } = await supabase
+      .from('forum_post_comments')
+      .select(`
+        *,
+        profiles!inner(name, avatar_url)
+      `)
+      .eq('post_id', postId)
+      .order('created_at');
+
+    if (error) throw error;
+
+    return data.map(comment => ({
+      id: comment.id,
+      content: comment.content,
+      author_id: comment.author_id,
+      author_name: comment.profiles?.name || 'Unknown User',
+      author_avatar: comment.profiles?.avatar_url,
+      created_at: new Date(comment.created_at!),
+      updated_at: new Date(comment.updated_at!),
+    }));
+  } catch (error) {
+    console.error('Get post comments error:', error);
+    toast.error("Failed to fetch comments");
+    throw error;
+  }
+}
+
+export async function createPostComment(postId: string, content: string): Promise<any> {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('User not authenticated');
+
+    const { data, error } = await supabase
+      .from('forum_post_comments')
+      .insert({
+        post_id: postId,
+        author_id: user.id,
+        content: content,
+      })
+      .select(`
+        *,
+        profiles!inner(name, avatar_url)
+      `)
+      .single();
+
+    if (error) throw error;
+
+    toast.success("Comment posted successfully");
+    return {
+      id: data.id,
+      content: data.content,
+      author_id: data.author_id,
+      author_name: data.profiles?.name || 'Unknown User',
+      author_avatar: data.profiles?.avatar_url,
+      created_at: new Date(data.created_at!),
+      updated_at: new Date(data.updated_at!),
+    };
+  } catch (error) {
+    console.error('Create post comment error:', error);
+    toast.error("Failed to post comment");
+    throw error;
+  }
+}
+
+// Chat request functions
+export async function sendChatRequest(receiverId: string, message?: string): Promise<any> {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('User not authenticated');
+
+    const { data, error } = await supabase
+      .from('chat_requests')
+      .insert({
+        sender_id: user.id,
+        receiver_id: receiverId,
+        message: message,
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    toast.success("Chat request sent successfully");
+    return data;
+  } catch (error) {
+    console.error('Send chat request error:', error);
+    toast.error("Failed to send chat request");
+    throw error;
+  }
+}
+
+export async function getChatRequests(): Promise<any[]> {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('User not authenticated');
+
+    const { data, error } = await supabase
+      .from('chat_requests')
+      .select(`
+        *,
+        sender:profiles!chat_requests_sender_id_fkey(name, avatar_url),
+        receiver:profiles!chat_requests_receiver_id_fkey(name, avatar_url)
+      `)
+      .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+
+    return data || [];
+  } catch (error) {
+    console.error('Get chat requests error:', error);
+    toast.error("Failed to fetch chat requests");
+    throw error;
+  }
+}
+
+export async function respondToChatRequest(requestId: string, accept: boolean): Promise<any> {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('User not authenticated');
+
+    const { data, error } = await supabase
+      .from('chat_requests')
+      .update({
+        status: accept ? 'accepted' : 'declined',
+        responded_at: new Date().toISOString(),
+      })
+      .eq('id', requestId)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    if (accept) {
+      // Create a private chat
+      await createPrivateChat(data.sender_id, data.receiver_id);
+    }
+
+    toast.success(`Chat request ${accept ? 'accepted' : 'declined'}`);
+    return data;
+  } catch (error) {
+    console.error('Respond to chat request error:', error);
+    toast.error("Failed to respond to chat request");
+    throw error;
+  }
+}
+
+// Private chat functions
+export async function createPrivateChat(participant1: string, participant2: string): Promise<any> {
+  try {
+    const { data, error } = await supabase
+      .from('private_chats')
+      .upsert({
+        participant_1: participant1 < participant2 ? participant1 : participant2,
+        participant_2: participant1 < participant2 ? participant2 : participant1,
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  } catch (error) {
+    console.error('Create private chat error:', error);
+    throw error;
+  }
+}
+
+export async function getPrivateChats(): Promise<any[]> {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('User not authenticated');
+
+    const { data, error } = await supabase
+      .from('private_chats')
+      .select(`
+        *,
+        participant_1_profile:profiles!private_chats_participant_1_fkey(name, avatar_url),
+        participant_2_profile:profiles!private_chats_participant_2_fkey(name, avatar_url)
+      `)
+      .or(`participant_1.eq.${user.id},participant_2.eq.${user.id}`)
+      .order('updated_at', { ascending: false });
+
+    if (error) throw error;
+
+    return data?.map(chat => ({
+      ...chat,
+      other_participant: chat.participant_1 === user.id ? 
+        chat.participant_2_profile : 
+        chat.participant_1_profile,
+    })) || [];
+  } catch (error) {
+    console.error('Get private chats error:', error);
+    toast.error("Failed to fetch chats");
+    throw error;
+  }
+}
+
+export async function getChatMessages(chatId: string): Promise<any[]> {
+  try {
+    const { data, error } = await supabase
+      .from('private_messages')
+      .select(`
+        *,
+        sender:profiles!private_messages_sender_id_fkey(name, avatar_url)
+      `)
+      .eq('chat_id', chatId)
+      .order('created_at');
+
+    if (error) throw error;
+
+    return data || [];
+  } catch (error) {
+    console.error('Get chat messages error:', error);
+    toast.error("Failed to fetch messages");
+    throw error;
+  }
+}
+
+export async function sendMessage(chatId: string, content: string): Promise<any> {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('User not authenticated');
+
+    const { data, error } = await supabase
+      .from('private_messages')
+      .insert({
+        chat_id: chatId,
+        sender_id: user.id,
+        content: content,
+      })
+      .select(`
+        *,
+        sender:profiles!private_messages_sender_id_fkey(name, avatar_url)
+      `)
+      .single();
+
+    if (error) throw error;
+
+    // Update chat's updated_at timestamp
+    await supabase
+      .from('private_chats')
+      .update({ updated_at: new Date().toISOString() })
+      .eq('id', chatId);
+
+    return data;
+  } catch (error) {
+    console.error('Send message error:', error);
+    toast.error("Failed to send message");
+    throw error;
+  }
+}

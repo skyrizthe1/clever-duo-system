@@ -2,6 +2,9 @@ import React, { useState } from 'react';
 import { Header } from '@/components/Header';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { getForumCategories, getForumPosts, createForumPost, getCurrentUser } from '@/services/api';
+import { PostLikes } from '@/components/PostLikes';
+import { PostComments } from '@/components/PostComments';
+import { ChatRequest } from '@/components/ChatRequest';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -208,7 +211,7 @@ const Forum = () => {
                 </Card>
               ) : (
                 posts.map(post => (
-                  <Card key={post.id} className="hover:shadow-md transition-shadow cursor-pointer">
+                  <Card key={post.id} className="hover:shadow-md transition-shadow">
                     <CardContent className="pt-6">
                       <div className="flex items-start space-x-4">
                         <Avatar className="h-10 w-10">
@@ -217,15 +220,23 @@ const Forum = () => {
                           </AvatarFallback>
                         </Avatar>
                         <div className="flex-1 min-w-0">
-                          <div className="flex items-center space-x-2 mb-2">
-                            {post.pinned && <Pin className="h-4 w-4 text-blue-500" />}
-                            {post.locked && <Lock className="h-4 w-4 text-red-500" />}
-                            <h3 className="font-semibold text-lg truncate">{post.title}</h3>
+                          <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-center space-x-2">
+                              {post.pinned && <Pin className="h-4 w-4 text-blue-500" />}
+                              {post.locked && <Lock className="h-4 w-4 text-red-500" />}
+                              <h3 className="font-semibold text-lg truncate">{post.title}</h3>
+                            </div>
+                            {currentUser && currentUser.id !== post.author_id && (
+                              <ChatRequest 
+                                receiverId={post.author_id} 
+                                receiverName={post.author_name} 
+                              />
+                            )}
                           </div>
                           <p className="text-muted-foreground text-sm mb-3 line-clamp-2">
                             {post.content}
                           </p>
-                          <div className="flex items-center justify-between">
+                          <div className="flex items-center justify-between mb-4">
                             <div className="flex items-center space-x-4 text-sm text-muted-foreground">
                               <span>by {post.author_name}</span>
                               <span>{formatDistanceToNow(post.created_at)} ago</span>
@@ -233,16 +244,18 @@ const Forum = () => {
                                 <Eye className="h-4 w-4" />
                                 <span>{post.views}</span>
                               </div>
-                              <div className="flex items-center space-x-1">
-                                <MessageSquare className="h-4 w-4" />
-                                <span>0</span>
-                              </div>
                             </div>
                             {categories.find(cat => cat.id === post.category_id) && (
                               <Badge variant="secondary" className="text-xs">
                                 {categories.find(cat => cat.id === post.category_id)?.name}
                               </Badge>
                             )}
+                          </div>
+                          
+                          {/* Post interactions */}
+                          <div className="flex items-center space-x-4 pt-3 border-t border-gray-100">
+                            <PostLikes postId={post.id} />
+                            <PostComments postId={post.id} />
                           </div>
                         </div>
                       </div>

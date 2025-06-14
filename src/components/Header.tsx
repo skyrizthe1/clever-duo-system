@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -60,6 +59,13 @@ export function Header() {
               >
                 <MessageSquare className="h-4 w-4" />
                 <span>Forum</span>
+              </Link>
+              <Link 
+                to="/chat" 
+                className="text-gray-700 hover:text-blue-600 transition-colors flex items-center space-x-1"
+              >
+                <MessageSquare className="h-4 w-4" />
+                <span>Chat</span>
               </Link>
               {currentUser.role === 'student' && (
                 <>
