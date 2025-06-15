@@ -5,6 +5,7 @@ import { getCurrentUser } from '@/services/api';
 import { AdminDashboard } from '@/components/AdminDashboard';
 import { TeacherDashboard } from '@/components/TeacherDashboard';
 import { StudentDashboard } from '@/components/StudentDashboard';
+import { Separator } from '@/components/ui/separator';
 
 interface User {
   id: string;
@@ -49,17 +50,19 @@ const Index = () => {
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-br from-blue-50 to-indigo-100">
       <Header />
-      <main className="flex-1 container mx-auto px-4 py-6">
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent mb-2">
+      <main className="flex-1 container mx-auto px-4 py-8">
+        <div className="mb-12">
+          <h1 className="text-6xl font-black bg-gradient-to-r from-blue-600 via-purple-600 to-blue-800 bg-clip-text text-transparent mb-4 tracking-tight leading-tight">
             Welcome back, {currentUser?.name}!
           </h1>
-          <p className="text-gray-600 text-lg">
+          <p className="text-gray-700 text-xl font-medium">
             {currentUser?.role === 'admin' && "Manage your educational platform"}
             {currentUser?.role === 'teacher' && "Create and manage your exams"}
             {currentUser?.role === 'student' && "Check your upcoming exams and results"}
           </p>
         </div>
+        
+        <Separator className="my-8 bg-gradient-to-r from-transparent via-gray-300 to-transparent h-px" />
         
         {currentUser?.role === 'admin' && <AdminDashboard />}
         {currentUser?.role === 'teacher' && <TeacherDashboard />}
