@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { getUsers, getExams, getQuestions, getPasswordRecoveryRequests } from '@/services/api';
@@ -64,7 +63,10 @@ export function AdminDashboard() {
             ← Back to Dashboard
           </button>
         </div>
-        <PasswordRecoveryAdmin />
+        <PasswordRecoveryAdmin 
+          open={passwordRecoveryOpen}
+          onOpenChange={setPasswordRecoveryOpen}
+        />
       </div>
     );
   }
