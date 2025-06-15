@@ -35,7 +35,7 @@ export function PrivateChat({ chatId, otherParticipant, currentUserId }: Private
       await queryClient.cancelQueries({ queryKey: ['chatMessages', chatId] });
 
       // Snapshot the previous value
-      const previousMessages = queryClient.getQueryData(['chatMessages', chatId]) || [];
+      const previousMessages = queryClient.getQueryData(['chatMessages', chatId]) as any[] || [];
 
       // Optimistically update with new message
       const optimisticMessage = {

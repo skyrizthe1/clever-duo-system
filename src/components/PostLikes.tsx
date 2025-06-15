@@ -12,34 +12,45 @@ interface PostLikesProps {
 export function PostLikes({ postId }: PostLikesProps) {
   const queryClient = useQueryClient();
   const [isAnimating, setIsAnimating] = useState(false);
-  const [optimisticLike, setOptimisticLike] = useState<{ isLiked: boolean; count: number } | null>(null);
 
   const { data: likesData = { count: 0, isLiked: false } } = useQuery({
     queryKey: ['postLikes', postId],
     queryFn: () => getPostLikes(postId)
   });
 
-  const displayData = optimisticLike || likesData;
-
   const toggleLikeMutation = useMutation({
     mutationFn: () => togglePostLike(postId),
-    onMutate: () => {
-      // Fixed optimistic update - use likesData instead of displayData to avoid circular reference
+    onMutate: async () => {
+      // Cancel any outgoing refetches
+      await queryClient.cancelQueries({ queryKey: ['postLikes', postId] });
+
+      // Snapshot the previous value
+      const previousLikesData = queryClient.getQueryData(['postLikes', postId]) || { count: 0, isLiked: false };
+
+      // Optimistically update - toggle the current state
       const newIsLiked = !likesData.isLiked;
       const newCount = newIsLiked ? likesData.count + 1 : likesData.count - 1;
-      setOptimisticLike({ isLiked: newIsLiked, count: newCount });
       
-      // Immediate animation
+      queryClient.setQueryData(['postLikes', postId], {
+        count: newCount,
+        isLiked: newIsLiked
+      });
+
+      // Animation
       setIsAnimating(true);
       setTimeout(() => setIsAnimating(false), 200);
+
+      return { previousLikesData };
     },
-    onSuccess: () => {
+    onError: (err, variables, context) => {
+      // Rollback on error
+      if (context?.previousLikesData) {
+        queryClient.setQueryData(['postLikes', postId], context.previousLikesData);
+      }
+    },
+    onSettled: () => {
+      // Always refetch after success or error to sync with server
       queryClient.invalidateQueries({ queryKey: ['postLikes', postId] });
-      setOptimisticLike(null);
-    },
-    onError: () => {
-      // Revert optimistic update on error
-      setOptimisticLike(null);
     }
   });
 
@@ -56,15 +67,15 @@ export function PostLikes({ postId }: PostLikesProps) {
     >
       <Heart 
         className={`h-4 w-4 transition-all duration-200 ${
-          displayData.isLiked 
+          likesData.isLiked 
             ? 'fill-red-500 text-red-500' 
             : 'text-gray-500'
         } ${
           isAnimating ? 'scale-125 rotate-12' : 'scale-100'
         }`} 
       />
-      <span className={`transition-colors duration-200 ${displayData.isLiked ? 'text-red-600' : 'text-gray-600'}`}>
-        {displayData.count}
+      <span className={`transition-colors duration-200 ${likesData.isLiked ? 'text-red-600' : 'text-gray-600'}`}>
+        {likesData.count}
       </span>
     </Button>
   );
