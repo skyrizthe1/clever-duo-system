@@ -1205,23 +1205,10 @@ export interface PasswordRecoveryRequest {
 
 export async function createPasswordRecoveryRequest(email: string, reason?: string): Promise<void> {
   try {
-    // First, check if a user with this email exists by trying to get their profile
-    const { data: profiles, error: profileError } = await supabase
-      .from('profiles')
-      .select('id, name')
-      .limit(1000); // Get all profiles to search by email
-
-    if (profileError) {
-      console.error('Error fetching profiles:', profileError);
-      throw new Error('Unable to process request');
-    }
-
-    // Since we don't store email in profiles table, we need to check auth users
-    // For now, we'll create the request with the email and let admin handle verification
     const { data, error } = await supabase
       .from('password_recovery_requests')
       .insert({
-        user_id: 'pending-verification', // We'll update this when admin processes
+        user_id: 'pending-verification', // Will be updated when admin processes
         user_email: email,
         user_name: email.split('@')[0], // Use email prefix as name initially
         reason: reason,
