@@ -2,8 +2,9 @@
 import React, { useState } from 'react';
 import { Heart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { getPostLikes, togglePostLike } from '@/services/api';
+import { getPostLikes, togglePostLike, getCurrentUser } from '@/services/api';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { toast } from 'sonner';
 
 interface PostLikesProps {
   postId: string;
@@ -13,6 +14,11 @@ export function PostLikes({ postId }: PostLikesProps) {
   const queryClient = useQueryClient();
   const [isAnimating, setIsAnimating] = useState(false);
 
+  const { data: currentUser } = useQuery({
+    queryKey: ['currentUser'],
+    queryFn: getCurrentUser
+  });
+
   const { data: likesData = { count: 0, isLiked: false } } = useQuery({
     queryKey: ['postLikes', postId],
     queryFn: () => getPostLikes(postId)
@@ -21,6 +27,12 @@ export function PostLikes({ postId }: PostLikesProps) {
   const toggleLikeMutation = useMutation({
     mutationFn: () => togglePostLike(postId),
     onMutate: async () => {
+      // Check authentication before proceeding
+      if (!currentUser) {
+        toast.error('Please log in to like posts');
+        throw new Error('User not authenticated');
+      }
+
       // Cancel any outgoing refetches
       await queryClient.cancelQueries({ queryKey: ['postLikes', postId] });
 
@@ -47,6 +59,11 @@ export function PostLikes({ postId }: PostLikesProps) {
       if (context?.previousLikesData) {
         queryClient.setQueryData(['postLikes', postId], context.previousLikesData);
       }
+      
+      // Show error message if not already shown in onMutate
+      if (err.message !== 'User not authenticated') {
+        toast.error('Failed to update like status');
+      }
     },
     onSettled: () => {
       // Always refetch after success or error to sync with server
@@ -55,6 +72,10 @@ export function PostLikes({ postId }: PostLikesProps) {
   });
 
   const handleToggleLike = () => {
+    if (!currentUser) {
+      toast.error('Please log in to like posts');
+      return;
+    }
     toggleLikeMutation.mutate();
   };
 
@@ -63,7 +84,10 @@ export function PostLikes({ postId }: PostLikesProps) {
       variant="ghost"
       size="sm"
       onClick={handleToggleLike}
-      className="flex items-center space-x-1 hover:bg-red-50 hover:text-red-600 transition-all duration-200"
+      className={`flex items-center space-x-1 hover:bg-red-50 hover:text-red-600 transition-all duration-200 ${
+        !currentUser ? 'cursor-not-allowed opacity-50' : ''
+      }`}
+      disabled={!currentUser}
     >
       <Heart 
         className={`h-4 w-4 transition-all duration-200 ${
