@@ -1205,31 +1205,43 @@ export interface PasswordRecoveryRequest {
 
 export async function createPasswordRecoveryRequest(email: string, reason?: string): Promise<void> {
   try {
-    // Use a special UUID that indicates pending verification
-    const pendingUserId = '00000000-0000-0000-0000-000000000000';
+    console.log('Creating password recovery request for:', email);
     
     const { data, error } = await supabase
       .from('password_recovery_requests')
       .insert({
-        user_id: pendingUserId, // Use a valid UUID format for pending state
         user_email: email,
         user_name: email.split('@')[0], // Use email prefix as name initially
         reason: reason,
         status: 'pending',
+        // Don't include user_id - let the database handle it
       })
       .select()
       .single();
 
     if (error) {
       console.error('Error creating password recovery request:', error);
+      if (error.code === '42501') {
+        // RLS policy error
+        toast.error("Unable to submit request. Please contact an administrator directly.");
+      } else if (error.code === '23502') {
+        // Not null constraint error
+        toast.error("Please ensure all required fields are filled.");
+      } else {
+        toast.error("Failed to submit password recovery request. Please try again.");
+      }
       throw error;
     }
 
+    console.log('Password recovery request created successfully:', data);
     toast.success("Password recovery request submitted successfully. An administrator will review your request.");
   } catch (error) {
     console.error('Create password recovery request error:', error);
-    toast.error("Failed to submit password recovery request");
-    throw error;
+    // Don't throw again if we already handled it above
+    if (!error?.code) {
+      toast.error("Failed to submit password recovery request");
+      throw error;
+    }
   }
 }
 
