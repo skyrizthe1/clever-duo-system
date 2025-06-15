@@ -17,6 +17,16 @@ export function PostComments({ postId }: PostCommentsProps) {
   const [newComment, setNewComment] = useState('');
   const queryClient = useQueryClient();
 
+  // Always fetch comment count
+  const { data: commentCount = 0 } = useQuery({
+    queryKey: ['postCommentCount', postId],
+    queryFn: async () => {
+      const comments = await getPostComments(postId);
+      return comments.length;
+    }
+  });
+
+  // Only fetch full comments when expanded
   const { data: comments = [] } = useQuery({
     queryKey: ['postComments', postId],
     queryFn: () => getPostComments(postId),
@@ -27,7 +37,9 @@ export function PostComments({ postId }: PostCommentsProps) {
     mutationFn: (content: string) => createPostComment(postId, content),
     onSuccess: () => {
       setNewComment('');
+      // Invalidate both the comments and comment count
       queryClient.invalidateQueries({ queryKey: ['postComments', postId] });
+      queryClient.invalidateQueries({ queryKey: ['postCommentCount', postId] });
     }
   });
 
@@ -47,7 +59,7 @@ export function PostComments({ postId }: PostCommentsProps) {
         className="flex items-center space-x-1 hover:bg-blue-50 hover:text-blue-600"
       >
         <MessageSquare className="h-4 w-4" />
-        <span>{comments.length} {comments.length === 1 ? 'Comment' : 'Comments'}</span>
+        <span>{commentCount} {commentCount === 1 ? 'Comment' : 'Comments'}</span>
       </Button>
 
       {isExpanded && (
