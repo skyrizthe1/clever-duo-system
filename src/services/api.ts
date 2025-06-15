@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
@@ -9,8 +10,14 @@ export interface User {
   email: string;
   name: string;
   role: UserRole;
-  avatar?: string;
+  avatar_url?: string;
   slogan?: string;
+  bio?: string;
+  phone?: string;
+  location?: string;
+  social_links?: any;
+  created_at?: string;
+  updated_at?: string;
 }
 
 export interface Question {
@@ -64,6 +71,43 @@ export interface PasswordRecoveryRequest {
   temporary_password?: string;
   created_at: string;
   processed_at?: string;
+}
+
+export interface ChatMessage {
+  id: string;
+  chat_id: string;
+  sender_id: string;
+  content: string;
+  created_at: string;
+  isOptimistic?: boolean;
+}
+
+export interface PostComment {
+  id: string;
+  post_id: string;
+  author_id: string;
+  author_name: string;
+  author_avatar?: string;
+  content: string;
+  created_at: string;
+}
+
+export interface ChatRequest {
+  id: string;
+  sender_id: string;
+  receiver_id: string;
+  message: string;
+  status: 'pending' | 'accepted' | 'rejected';
+  created_at: string;
+  responded_at?: string;
+}
+
+export interface PrivateChat {
+  id: string;
+  participant_1: string;
+  participant_2: string;
+  created_at: string;
+  updated_at: string;
 }
 
 export const login = async (email: string, password: string) => {
@@ -135,10 +179,34 @@ export const logout = async () => {
   }
 };
 
-export const getCurrentUser = async () => {
+export const getCurrentUser = async (): Promise<User | null> => {
   try {
     const { data: { user } } = await supabase.auth.getUser();
-    return user;
+    if (!user) return null;
+
+    // Get profile data
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', user.id)
+      .single();
+
+    if (!profile) return null;
+
+    return {
+      id: user.id,
+      email: user.email || '',
+      name: profile.name || '',
+      role: profile.role || 'student',
+      avatar_url: profile.avatar_url,
+      slogan: profile.slogan,
+      bio: profile.bio,
+      phone: profile.phone,
+      location: profile.location,
+      social_links: profile.social_links,
+      created_at: profile.created_at,
+      updated_at: profile.updated_at,
+    };
   } catch (error) {
     console.error("Error getting current user:", error);
     return null;
@@ -180,7 +248,6 @@ export const getProfile = async (userId: string) => {
 
     if (error) {
       console.error('Error fetching profile:', error.message);
-      // Do not display an error message here, just return null
       return null;
     }
 
@@ -199,7 +266,7 @@ export const createPasswordRecoveryRequest = async (email: string, reason?: stri
       .from('password_recovery_requests')
       .insert({
         user_email: email,
-        user_name: email.split('@')[0], // Use email prefix as name initially
+        user_name: email.split('@')[0],
         reason: reason || null,
         status: 'pending',
       })
@@ -242,7 +309,20 @@ export const getUsers = async (): Promise<User[]> => {
       throw error;
     }
 
-    return data || [];
+    return data?.map(profile => ({
+      id: profile.id,
+      email: profile.email || '',
+      name: profile.name,
+      role: profile.role,
+      avatar_url: profile.avatar_url,
+      slogan: profile.slogan,
+      bio: profile.bio,
+      phone: profile.phone,
+      location: profile.location,
+      social_links: profile.social_links,
+      created_at: profile.created_at,
+      updated_at: profile.updated_at,
+    })) || [];
   } catch (error: any) {
     console.error('Error fetching users:', error.message);
     throw error;
@@ -291,7 +371,17 @@ export const getQuestions = async (): Promise<Question[]> => {
       throw error;
     }
 
-    return data || [];
+    return data?.map(q => ({
+      id: q.id,
+      content: q.content,
+      type: q.type,
+      options: q.options,
+      correctAnswer: q.correct_answer,
+      points: q.points,
+      category: q.category,
+      createdBy: q.created_by,
+      created_at: q.created_at,
+    })) || [];
   } catch (error: any) {
     console.error('Error fetching questions:', error.message);
     return [];
@@ -302,7 +392,15 @@ export const createQuestion = async (questionData: Omit<Question, 'id' | 'create
   try {
     const { data, error } = await supabase
       .from('questions')
-      .insert(questionData)
+      .insert({
+        content: questionData.content,
+        type: questionData.type,
+        options: questionData.options,
+        correct_answer: questionData.correctAnswer,
+        points: questionData.points,
+        category: questionData.category,
+        created_by: questionData.createdBy,
+      })
       .select()
       .single();
 
@@ -579,10 +677,76 @@ export const sendChatRequest = async (receiverId: string, message: string) => {
   }
 };
 
-export const getChatMessages = async (chatId: string) => {
+export const getChatRequests = async (): Promise<ChatRequest[]> => {
   try {
     const { data, error } = await supabase
-      .from('chat_messages')
+      .from('chat_requests')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching chat requests:', error);
+      throw error;
+    }
+
+    return data || [];
+  } catch (error: any) {
+    console.error('Error fetching chat requests:', error.message);
+    return [];
+  }
+};
+
+export const getPrivateChats = async (): Promise<PrivateChat[]> => {
+  try {
+    const { data, error } = await supabase
+      .from('private_chats')
+      .select('*')
+      .order('updated_at', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching private chats:', error);
+      throw error;
+    }
+
+    return data || [];
+  } catch (error: any) {
+    console.error('Error fetching private chats:', error.message);
+    return [];
+  }
+};
+
+export const respondToChatRequest = async (requestId: string, response: 'accept' | 'reject') => {
+  try {
+    const { data, error } = await supabase
+      .from('chat_requests')
+      .update({
+        status: response === 'accept' ? 'accepted' : 'rejected',
+        responded_at: new Date().toISOString(),
+      })
+      .eq('id', requestId)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error responding to chat request:', error);
+      toast.error(`Failed to respond to chat request: ${error.message}`);
+      throw error;
+    }
+
+    console.log('Chat request response sent successfully:', data);
+    toast.success(`Chat request ${response}ed successfully!`);
+    return data;
+  } catch (error: any) {
+    console.error('Error responding to chat request:', error.message);
+    toast.error(`Error responding to chat request: ${error.message}`);
+    throw error;
+  }
+};
+
+export const getChatMessages = async (chatId: string): Promise<ChatMessage[]> => {
+  try {
+    const { data, error } = await supabase
+      .from('private_messages')
       .select('*')
       .eq('chat_id', chatId)
       .order('created_at', { ascending: true });
@@ -602,7 +766,7 @@ export const getChatMessages = async (chatId: string) => {
 export const sendMessage = async (chatId: string, content: string) => {
   try {
     const { data, error } = await supabase
-      .from('chat_messages')
+      .from('private_messages')
       .insert({
         chat_id: chatId,
         content: content,
@@ -626,11 +790,17 @@ export const sendMessage = async (chatId: string, content: string) => {
 };
 
 // Post functions
-export const getPostComments = async (postId: string) => {
+export const getPostComments = async (postId: string): Promise<PostComment[]> => {
   try {
     const { data, error } = await supabase
-      .from('post_comments')
-      .select('*')
+      .from('forum_post_comments')
+      .select(`
+        *,
+        profiles!forum_post_comments_author_id_fkey (
+          name,
+          avatar_url
+        )
+      `)
       .eq('post_id', postId)
       .order('created_at', { ascending: true });
 
@@ -639,7 +809,15 @@ export const getPostComments = async (postId: string) => {
       throw error;
     }
 
-    return data || [];
+    return data?.map(comment => ({
+      id: comment.id,
+      post_id: comment.post_id,
+      author_id: comment.author_id,
+      author_name: comment.profiles?.name || 'Unknown',
+      author_avatar: comment.profiles?.avatar_url,
+      content: comment.content,
+      created_at: comment.created_at,
+    })) || [];
   } catch (error: any) {
     console.error('Error fetching post comments:', error.message);
     return [];
@@ -649,7 +827,7 @@ export const getPostComments = async (postId: string) => {
 export const createPostComment = async (postId: string, content: string) => {
   try {
     const { data, error } = await supabase
-      .from('post_comments')
+      .from('forum_post_comments')
       .insert({
         post_id: postId,
         content: content,
@@ -675,7 +853,7 @@ export const createPostComment = async (postId: string, content: string) => {
 export const getPostLikes = async (postId: string) => {
   try {
     const { data, error } = await supabase
-      .from('post_likes')
+      .from('forum_post_likes')
       .select('*')
       .eq('post_id', postId);
 
@@ -704,7 +882,7 @@ export const togglePostLike = async (postId: string) => {
 
     // Check if already liked
     const { data: existingLike, error: checkError } = await supabase
-      .from('post_likes')
+      .from('forum_post_likes')
       .select('*')
       .eq('post_id', postId)
       .eq('user_id', currentUser.id)
@@ -717,7 +895,7 @@ export const togglePostLike = async (postId: string) => {
     if (existingLike) {
       // Remove like
       const { error } = await supabase
-        .from('post_likes')
+        .from('forum_post_likes')
         .delete()
         .eq('post_id', postId)
         .eq('user_id', currentUser.id);
@@ -726,7 +904,7 @@ export const togglePostLike = async (postId: string) => {
     } else {
       // Add like
       const { error } = await supabase
-        .from('post_likes')
+        .from('forum_post_likes')
         .insert({
           post_id: postId,
           user_id: currentUser.id,
