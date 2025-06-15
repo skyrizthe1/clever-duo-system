@@ -1,52 +1,10 @@
+import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
-import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
-
-// Type definitions
-export type UserRole = 'admin' | 'teacher' | 'student';
-
-export interface User {
-  id: string;
-  email: string;
-  name: string;
-  role: UserRole;
-  avatar_url?: string;
-  slogan?: string;
-  bio?: string;
-  phone?: string;
-  location?: string;
-  social_links?: any;
-  created_at?: string;
-  updated_at?: string;
-}
-
-export interface Question {
-  id: string;
-  content: string;
-  type: 'single-choice' | 'multiple-choice' | 'fill-blank' | 'short-answer';
-  options?: string[];
-  correctAnswer: string | string[];
-  points: number;
-  category: string;
-  createdBy: string;
-  created_at?: string;
-}
-
-export interface Exam {
-  id: string;
-  title: string;
-  description: string;
-  questions: string[];
-  duration: number;
-  start_time: string;
-  end_time: string;
-  published: boolean;
-  created_by: string;
-  created_at?: string;
-}
-
-export type TaskStatus = 'todo' | 'inprogress' | 'review' | 'done';
-export type TaskPriority = 'low' | 'medium' | 'high';
+// Types
+export type TaskStatus = "todo" | "inprogress" | "review" | "done";
+export type TaskPriority = "low" | "medium" | "high";
+export type UserRole = "admin" | "teacher" | "student";
 
 export interface Task {
   id: string;
@@ -54,220 +12,1219 @@ export interface Task {
   description: string;
   status: TaskStatus;
   priority: TaskPriority;
+  createdAt: Date;
+  dueDate?: Date;
   tags: string[];
   assignedTo?: string;
-  dueDate?: Date;
-  created_at?: string;
 }
 
-export interface PasswordRecoveryRequest {
+export interface User {
   id: string;
-  user_email: string;
-  user_name: string;
-  reason?: string;
-  status: 'pending' | 'approved' | 'rejected';
-  admin_id?: string;
-  admin_notes?: string;
-  temporary_password?: string;
-  created_at: string;
-  processed_at?: string;
+  name: string;
+  email: string;
+  avatar?: string;
+  role: UserRole;
+  bio?: string;
+  slogan?: string;
+  phone?: string;
+  location?: string;
+  social_links?: Record<string, string>;
 }
 
-export interface ChatMessage {
+export interface RegisterUserData {
+  name: string;
+  email: string;
+  password: string;
+  role: UserRole;
+}
+
+export interface Question {
   id: string;
-  chat_id: string;
-  sender_id: string;
+  type: 'single-choice' | 'multiple-choice' | 'fill-blank' | 'short-answer';
   content: string;
-  created_at: string;
-  isOptimistic?: boolean;
+  options?: string[];
+  correctAnswer: string | string[];
+  points: number;
+  category: string;
+  createdBy: string;
 }
 
-export interface PostComment {
+export interface Exam {
   id: string;
+  title: string;
+  description: string;
+  duration: number; // minutes
+  start_time: Date;
+  end_time: Date;
+  questions: string[]; // Question IDs
+  created_by: string;
+  published: boolean;
+}
+
+export interface ExamSubmission {
+  id: string;
+  exam_id: string;
+  exam_title: string;
+  student_id: string;
+  student_name: string;
+  submitted_at: Date;
+  graded: boolean;
+  score?: number;
+  total_points?: number;
+  answers: Record<string, any>;
+  time_spent: number;
+  feedback?: Record<string, string>;
+  individual_scores?: Record<string, number>;
+}
+
+export interface ForumCategory {
+  id: string;
+  name: string;
+  description: string;
+  color: string;
+  created_at: Date;
+  created_by: string;
+}
+
+export interface ForumPost {
+  id: string;
+  title: string;
+  content: string;
+  category_id: string;
+  author_id: string;
+  author_name: string;
+  pinned: boolean;
+  locked: boolean;
+  views: number;
+  created_at: Date;
+  updated_at: Date;
+}
+
+export interface ForumReply {
+  id: string;
+  content: string;
   post_id: string;
   author_id: string;
   author_name: string;
-  author_avatar?: string;
-  content: string;
-  created_at: string;
+  parent_id?: string;
+  created_at: Date;
+  updated_at: Date;
 }
 
-export interface ChatRequest {
-  id: string;
-  sender_id: string;
-  receiver_id: string;
-  message: string;
-  status: 'pending' | 'accepted' | 'rejected';
-  created_at: string;
-  responded_at?: string;
-}
-
-export interface PrivateChat {
-  id: string;
-  participant_1: string;
-  participant_2: string;
-  created_at: string;
-  updated_at: string;
-}
-
-export const login = async (email: string, password: string) => {
+// Auth utility functions
+const cleanupAuthState = () => {
   try {
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email: email,
-      password: password,
+    // Remove all Supabase auth keys from localStorage
+    Object.keys(localStorage).forEach((key) => {
+      if (key.startsWith('supabase.auth.') || key.includes('sb-')) {
+        localStorage.removeItem(key);
+      }
     });
-
-    if (error) {
-      console.error('Login failed:', error.message);
-      toast.error(`Login failed: ${error.message}`);
-      throw error;
+    
+    // Remove from sessionStorage if available
+    if (typeof sessionStorage !== 'undefined') {
+      Object.keys(sessionStorage).forEach((key) => {
+        if (key.startsWith('supabase.auth.') || key.includes('sb-')) {
+          sessionStorage.removeItem(key);
+        }
+      });
     }
-
-    console.log('Login successful:', data);
-    toast.success('Login successful!');
-    return data;
-  } catch (error: any) {
-    console.error('Login error:', error.message);
-    toast.error(`Login error: ${error.message}`);
-    throw error;
+  } catch (error) {
+    console.log('Auth cleanup completed');
   }
 };
 
-export const register = async (email: string, password: string, name: string) => {
+// Helper function to safely convert Json to Record<string, string>
+const convertSocialLinks = (socialLinks: any): Record<string, string> => {
+  if (!socialLinks || typeof socialLinks !== 'object' || Array.isArray(socialLinks)) {
+    return {};
+  }
+  
+  // Ensure all values are strings
+  const result: Record<string, string> = {};
+  for (const [key, value] of Object.entries(socialLinks)) {
+    if (typeof value === 'string') {
+      result[key] = value;
+    }
+  }
+  return result;
+};
+
+// User Registration with Supabase
+export async function registerUser(userData: RegisterUserData): Promise<User> {
   try {
+    console.log('Registering user with Supabase:', userData.email);
+    
+    // Clean up any existing auth state first
+    cleanupAuthState();
+    
+    // Attempt to sign out any existing session
+    try {
+      await supabase.auth.signOut({ scope: 'global' });
+    } catch (err) {
+      // Continue even if this fails
+      console.log('No existing session to sign out');
+    }
+
     const { data, error } = await supabase.auth.signUp({
-      email: email,
-      password: password,
+      email: userData.email,
+      password: userData.password,
       options: {
         data: {
-          name: name,
-        },
-      },
+          name: userData.name,
+          role: userData.role,
+        }
+      }
     });
 
     if (error) {
-      console.error('Registration failed:', error.message);
-      toast.error(`Registration failed: ${error.message}`);
+      console.error('Registration error:', error);
       throw error;
     }
 
-    console.log('Registration successful:', data);
-    toast.success('Registration successful! Please check your email to verify your account.');
-    return data;
-  } catch (error: any) {
-    console.error('Registration error:', error.message);
-    toast.error(`Registration error: ${error.message}`);
+    if (data.user) {
+      console.log('Registration successful:', data.user.id);
+      return {
+        id: data.user.id,
+        name: userData.name,
+        email: userData.email,
+        role: userData.role,
+      };
+    }
+
+    throw new Error('Registration failed - no user returned');
+  } catch (error) {
+    console.error('Registration error:', error);
+    const errorMessage = error?.message || "Registration failed";
+    toast.error(errorMessage);
     throw error;
   }
-};
+}
 
-export const logout = async () => {
+// User Login with Supabase
+export async function login(email: string, password: string): Promise<User> {
   try {
-    const { error } = await supabase.auth.signOut();
+    console.log('Attempting login with Supabase for:', email);
+    
+    // Clean up any existing auth state first
+    cleanupAuthState();
+    
+    // Attempt to sign out any existing session
+    try {
+      await supabase.auth.signOut({ scope: 'global' });
+    } catch (err) {
+      // Continue even if this fails
+      console.log('No existing session to sign out');
+    }
+
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
 
     if (error) {
-      console.error('Logout failed:', error.message);
-      toast.error(`Logout failed: ${error.message}`);
+      console.error('Login error:', error);
       throw error;
     }
 
-    console.log('Logout successful');
-    toast.success('Logout successful!');
-  } catch (error: any) {
-    console.error('Logout error:', error.message);
-    toast.error(`Logout error: ${error.message}`);
+    if (data.user && data.session) {
+      console.log('Login successful:', data.user.id);
+      
+      // Get or create user profile
+      let profile = null;
+      try {
+        const { data: existingProfile, error: profileError } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', data.user.id)
+          .single();
+
+        if (profileError && profileError.code !== 'PGRST116') {
+          console.error('Profile fetch error:', profileError);
+        } else if (existingProfile) {
+          profile = existingProfile;
+        }
+      } catch (err) {
+        console.log('Profile lookup completed');
+      }
+
+      // If no profile exists, create one
+      if (!profile) {
+        try {
+          const { data: newProfile, error: insertError } = await supabase
+            .from('profiles')
+            .insert({
+              id: data.user.id,
+              name: data.user.user_metadata?.name || data.user.email?.split('@')[0] || 'User',
+              role: data.user.user_metadata?.role || 'student'
+            })
+            .select()
+            .single();
+          
+          if (!insertError && newProfile) {
+            profile = newProfile;
+          }
+        } catch (err) {
+          console.log('Profile creation attempted');
+        }
+      }
+
+      const userName = profile?.name || data.user.user_metadata?.name || data.user.email?.split('@')[0] || 'User';
+      const userRole = profile?.role || data.user.user_metadata?.role || 'student';
+
+      return {
+        id: data.user.id,
+        name: userName,
+        email: data.user.email!,
+        role: userRole,
+        avatar: profile?.avatar_url,
+        bio: profile?.bio,
+        slogan: profile?.slogan,
+        phone: profile?.phone,
+        location: profile?.location,
+        social_links: convertSocialLinks(profile?.social_links),
+      };
+    }
+
+    throw new Error('Login failed - no session returned');
+  } catch (error) {
+    console.error('Login error:', error);
+    const errorMessage = error?.message || "Invalid credentials";
+    toast.error(errorMessage);
+    throw error;
   }
-};
+}
 
-export const getCurrentUser = async (): Promise<User | null> => {
+// User Logout with Supabase
+export async function logout(): Promise<void> {
   try {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return null;
+    console.log('Logging out user with Supabase');
+    
+    // Clean up auth state first
+    cleanupAuthState();
+    
+    const { error } = await supabase.auth.signOut({ scope: 'global' });
+    
+    if (error) {
+      console.error('Logout error:', error);
+    }
+    
+    console.log('Logout completed');
+  } catch (error) {
+    console.error('Logout error:', error);
+  }
+}
 
-    // Get profile data
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', user.id)
-      .single();
+// Get Current User with Supabase - Fixed TypeScript error
+export async function getCurrentUser(): Promise<User | null> {
+  try {
+    const { data: { user }, error } = await supabase.auth.getUser();
+    
+    if (error || !user) {
+      console.log('No authenticated user found');
+      return null;
+    }
+    
+    console.log('Getting current user profile for:', user.id);
+    
+    // Get user profile with all fields
+    let profile = null;
+    try {
+      const { data: existingProfile, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
 
-    if (!profile) return null;
+      if (!profileError && existingProfile) {
+        profile = existingProfile;
+      }
+    } catch (err) {
+      console.log('Profile lookup completed');
+    }
+
+    const userName = profile?.name || user.user_metadata?.name || user.email?.split('@')[0] || 'User';
+    const userRole = profile?.role || user.user_metadata?.role || 'student';
+
+    console.log('Current user profile loaded:', userName);
 
     return {
       id: user.id,
-      email: user.email || '',
-      name: profile.name || '',
-      role: profile.role || 'student',
-      avatar_url: profile.avatar_url,
-      slogan: profile.slogan,
-      bio: profile.bio,
-      phone: profile.phone,
-      location: profile.location,
-      social_links: profile.social_links,
-      created_at: profile.created_at,
-      updated_at: profile.updated_at,
+      name: userName,
+      email: user.email!,
+      role: userRole,
+      avatar: profile?.avatar_url,
+      bio: profile?.bio,
+      slogan: profile?.slogan,
+      phone: profile?.phone,
+      location: profile?.location,
+      social_links: convertSocialLinks(profile?.social_links),
     };
   } catch (error) {
-    console.error("Error getting current user:", error);
+    console.error('Get current user error:', error);
     return null;
   }
-};
+}
 
-export const updateUserProfile = async (userId: string, updates: any) => {
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .update(updates)
-        .eq('id', userId)
-        .select()
-        .single();
-  
-      if (error) {
-        console.error("Error updating profile:", error);
-        toast.error(`Failed to update profile: ${error.message}`);
-        throw error;
-      }
-  
-      console.log("Profile updated successfully:", data);
-      toast.success('Profile updated successfully!');
-      return data;
-    } catch (error: any) {
-      console.error("Error updating profile:", error.message);
-      toast.error(`Error updating profile: ${error.message}`);
-      throw error;
-    }
-  };
+// Profile update function
+export async function updateProfile(userId: string, updates: Partial<User>): Promise<User> {
+  try {
+    const { data, error } = await supabase
+      .from('profiles')
+      .update({
+        name: updates.name,
+        bio: updates.bio,
+        slogan: updates.slogan,
+        phone: updates.phone,
+        location: updates.location,
+        social_links: updates.social_links,
+        avatar_url: updates.avatar,
+      })
+      .eq('id', userId)
+      .select()
+      .single();
 
-export const getProfile = async (userId: string) => {
+    if (error) throw error;
+
+    toast.success("Profile updated successfully");
+    return {
+      id: data.id,
+      name: data.name,
+      email: '', // Will be filled by caller
+      role: data.role,
+      avatar: data.avatar_url,
+      bio: data.bio,
+      slogan: data.slogan,
+      phone: data.phone,
+      location: data.location,
+      social_links: convertSocialLinks(data.social_links),
+    };
+  } catch (error) {
+    console.error('Update profile error:', error);
+    toast.error("Failed to update profile");
+    throw error;
+  }
+}
+
+// Avatar upload function
+export async function uploadAvatar(userId: string, file: File): Promise<string> {
+  try {
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${userId}/avatar.${fileExt}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from('avatars')
+      .upload(fileName, file, { upsert: true });
+
+    if (uploadError) throw uploadError;
+
+    const { data } = supabase.storage
+      .from('avatars')
+      .getPublicUrl(fileName);
+
+    return data.publicUrl;
+  } catch (error) {
+    console.error('Upload avatar error:', error);
+    toast.error("Failed to upload avatar");
+    throw error;
+  }
+}
+
+// Password recovery function
+export async function resetPassword(email: string): Promise<void> {
+  try {
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/reset-password`,
+    });
+
+    if (error) throw error;
+
+    toast.success("Password reset email sent");
+  } catch (error) {
+    console.error('Reset password error:', error);
+    toast.error("Failed to send password reset email");
+    throw error;
+  }
+}
+
+// Update password function
+export async function updatePassword(newPassword: string): Promise<void> {
+  try {
+    const { error } = await supabase.auth.updateUser({
+      password: newPassword
+    });
+
+    if (error) throw error;
+
+    toast.success("Password updated successfully");
+  } catch (error) {
+    console.error('Update password error:', error);
+    toast.error("Failed to update password");
+    throw error;
+  }
+}
+
+// User management functions
+export async function getUsers(): Promise<User[]> {
   try {
     const { data, error } = await supabase
       .from('profiles')
       .select('*')
-      .eq('id', userId)
+      .order('name');
+
+    if (error) throw error;
+
+    return data.map(profile => ({
+      id: profile.id,
+      name: profile.name,
+      email: '', // Email not stored in profiles table for privacy
+      role: profile.role,
+      avatar: profile.avatar_url,
+      bio: profile.bio,
+      slogan: profile.slogan,
+      phone: profile.phone,
+      location: profile.location,
+      social_links: convertSocialLinks(profile.social_links),
+    }));
+  } catch (error) {
+    console.error('Get users error:', error);
+    toast.error("Failed to fetch users");
+    throw error;
+  }
+}
+
+// Task functions
+export async function getTasks(): Promise<Task[]> {
+  try {
+    const { data, error } = await supabase
+      .from('tasks')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+
+    return data.map(task => ({
+      id: task.id,
+      title: task.title,
+      description: task.description,
+      status: task.status,
+      priority: task.priority,
+      createdAt: new Date(task.created_at),
+      dueDate: task.due_date ? new Date(task.due_date) : undefined,
+      tags: task.tags || [],
+      assignedTo: task.assigned_to,
+    }));
+  } catch (error) {
+    console.error('Get tasks error:', error);
+    toast.error("Failed to fetch tasks");
+    throw error;
+  }
+}
+
+export async function createTask(task: Omit<Task, "id" | "createdAt">): Promise<Task> {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('User not authenticated');
+
+    const { data, error } = await supabase
+      .from('tasks')
+      .insert({
+        title: task.title,
+        description: task.description,
+        status: task.status,
+        priority: task.priority,
+        due_date: task.dueDate?.toISOString(),
+        tags: task.tags,
+        assigned_to: task.assignedTo,
+        created_by: user.id,
+      })
+      .select()
       .single();
 
-    if (error) {
-      console.error('Error fetching profile:', error.message);
-      return null;
+    if (error) throw error;
+
+    toast.success("Task created successfully");
+    return {
+      id: data.id,
+      title: data.title,
+      description: data.description,
+      status: data.status,
+      priority: data.priority,
+      createdAt: new Date(data.created_at),
+      dueDate: data.due_date ? new Date(data.due_date) : undefined,
+      tags: data.tags || [],
+      assignedTo: data.assigned_to,
+    };
+  } catch (error) {
+    console.error('Create task error:', error);
+    toast.error("Failed to create task");
+    throw error;
+  }
+}
+
+export async function updateTask(taskId: string, updates: Partial<Task>): Promise<Task> {
+  try {
+    const { data, error } = await supabase
+      .from('tasks')
+      .update({
+        title: updates.title,
+        description: updates.description,
+        status: updates.status,
+        priority: updates.priority,
+        due_date: updates.dueDate?.toISOString(),
+        tags: updates.tags,
+        assigned_to: updates.assignedTo,
+      })
+      .eq('id', taskId)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    toast.success("Task updated successfully");
+    return {
+      id: data.id,
+      title: data.title,
+      description: data.description,
+      status: data.status,
+      priority: data.priority,
+      createdAt: new Date(data.created_at),
+      dueDate: data.due_date ? new Date(data.due_date) : undefined,
+      tags: data.tags || [],
+      assignedTo: data.assigned_to,
+    };
+  } catch (error) {
+    console.error('Update task error:', error);
+    toast.error("Failed to update task");
+    throw error;
+  }
+}
+
+export async function deleteTask(taskId: string): Promise<void> {
+  try {
+    const { error } = await supabase
+      .from('tasks')
+      .delete()
+      .eq('id', taskId);
+
+    if (error) throw error;
+
+    toast.success("Task deleted successfully");
+  } catch (error) {
+    console.error('Delete task error:', error);
+    toast.error("Failed to delete task");
+    throw error;
+  }
+}
+
+// Question functions
+export async function getQuestions(): Promise<Question[]> {
+  try {
+    const { data, error } = await supabase
+      .from('questions')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+
+    return data.map(question => ({
+      id: question.id,
+      type: question.type,
+      content: question.content,
+      options: question.options,
+      correctAnswer: Array.isArray(question.correct_answer) 
+        ? question.correct_answer as string[]
+        : question.correct_answer as string,
+      points: question.points,
+      category: question.category,
+      createdBy: question.created_by,
+    }));
+  } catch (error) {
+    console.error('Get questions error:', error);
+    toast.error("Failed to fetch questions");
+    throw error;
+  }
+}
+
+export async function createQuestion(question: Omit<Question, "id">): Promise<Question> {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('User not authenticated');
+
+    const { data, error } = await supabase
+      .from('questions')
+      .insert({
+        type: question.type,
+        content: question.content,
+        options: question.options,
+        correct_answer: question.correctAnswer as any,
+        points: question.points,
+        category: question.category,
+        created_by: user.id,
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    toast.success("Question created successfully");
+    return {
+      id: data.id,
+      type: data.type,
+      content: data.content,
+      options: data.options,
+      correctAnswer: data.correct_answer as string | string[],
+      points: data.points,
+      category: data.category,
+      createdBy: data.created_by,
+    };
+  } catch (error) {
+    console.error('Create question error:', error);
+    toast.error("Failed to create question");
+    throw error;
+  }
+}
+
+export async function updateQuestion(questionId: string, updates: Partial<Question>): Promise<Question> {
+  try {
+    const { data, error } = await supabase
+      .from('questions')
+      .update({
+        type: updates.type,
+        content: updates.content,
+        options: updates.options,
+        correct_answer: updates.correctAnswer as any,
+        points: updates.points,
+        category: updates.category,
+      })
+      .eq('id', questionId)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    toast.success("Question updated successfully");
+    return {
+      id: data.id,
+      type: data.type,
+      content: data.content,
+      options: data.options,
+      correctAnswer: Array.isArray(data.correct_answer) 
+        ? data.correct_answer as string[]
+        : data.correct_answer as string,
+      points: data.points,
+      category: data.category,
+      createdBy: data.created_by,
+    };
+  } catch (error) {
+    console.error('Update question error:', error);
+    toast.error("Failed to update question");
+    throw error;
+  }
+}
+
+export async function deleteQuestion(questionId: string): Promise<void> {
+  try {
+    const { error } = await supabase
+      .from('questions')
+      .delete()
+      .eq('id', questionId);
+
+    if (error) throw error;
+
+    toast.success("Question deleted successfully");
+  } catch (error) {
+    console.error('Delete question error:', error);
+    toast.error("Failed to delete question");
+    throw error;
+  }
+}
+
+// Exam functions
+export async function getExams(): Promise<Exam[]> {
+  try {
+    const { data, error } = await supabase
+      .from('exams')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+
+    return data.map(exam => ({
+      id: exam.id,
+      title: exam.title,
+      description: exam.description,
+      duration: exam.duration,
+      start_time: new Date(exam.start_time),
+      end_time: new Date(exam.end_time),
+      questions: exam.questions,
+      created_by: exam.created_by,
+      published: exam.published,
+    }));
+  } catch (error) {
+    console.error('Get exams error:', error);
+    toast.error("Failed to fetch exams");
+    throw error;
+  }
+}
+
+export async function createExam(exam: Omit<Exam, "id" | "created_by">): Promise<Exam> {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('User not authenticated');
+
+    const { data, error } = await supabase
+      .from('exams')
+      .insert({
+        title: exam.title,
+        description: exam.description,
+        duration: exam.duration,
+        start_time: exam.start_time.toISOString(),
+        end_time: exam.end_time.toISOString(),
+        questions: exam.questions,
+        published: exam.published,
+        created_by: user.id,
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    toast.success("Exam created successfully");
+    return {
+      id: data.id,
+      title: data.title,
+      description: data.description,
+      duration: data.duration,
+      start_time: new Date(data.start_time),
+      end_time: new Date(data.end_time),
+      questions: data.questions,
+      created_by: data.created_by,
+      published: data.published,
+    };
+  } catch (error) {
+    console.error('Create exam error:', error);
+    toast.error("Failed to create exam");
+    throw error;
+  }
+}
+
+export async function updateExam(examId: string, updates: Partial<Exam>): Promise<Exam> {
+  try {
+    const { data, error } = await supabase
+      .from('exams')
+      .update({
+        title: updates.title,
+        description: updates.description,
+        duration: updates.duration,
+        start_time: updates.start_time?.toISOString(),
+        end_time: updates.end_time?.toISOString(),
+        questions: updates.questions,
+        published: updates.published,
+      })
+      .eq('id', examId)
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    toast.success("Exam updated successfully");
+    return {
+      id: data.id,
+      title: data.title,
+      description: data.description,
+      duration: data.duration,
+      start_time: new Date(data.start_time),
+      end_time: new Date(data.end_time),
+      questions: data.questions,
+      created_by: data.created_by,
+      published: data.published,
+    };
+  } catch (error) {
+    console.error('Update exam error:', error);
+    toast.error("Failed to update exam");
+    throw error;
+  }
+}
+
+export async function deleteExam(examId: string): Promise<void> {
+  try {
+    const { error } = await supabase
+      .from('exams')
+      .delete()
+      .eq('id', examId);
+
+    if (error) throw error;
+
+    toast.success("Exam deleted successfully");
+  } catch (error) {
+    console.error('Delete exam error:', error);
+    toast.error("Failed to delete exam");
+    throw error;
+  }
+}
+
+// Exam submission functions
+export async function getExamSubmissions(): Promise<ExamSubmission[]> {
+  try {
+    const { data, error } = await supabase
+      .from('exam_submissions')
+      .select(`
+        *,
+        exams!inner(title),
+        profiles!inner(name)
+      `)
+      .order('submitted_at', { ascending: false });
+
+    if (error) throw error;
+
+    return data.map(submission => ({
+      id: submission.id,
+      exam_id: submission.exam_id,
+      exam_title: submission.exams?.title || 'Unknown Exam',
+      student_id: submission.student_id,
+      student_name: submission.profiles?.name || 'Unknown Student',
+      submitted_at: new Date(submission.submitted_at),
+      graded: submission.graded,
+      score: submission.score,
+      total_points: submission.total_points,
+      answers: typeof submission.answers === 'object' && submission.answers !== null 
+        ? (submission.answers as Record<string, any>) 
+        : {},
+      time_spent: submission.time_spent,
+      feedback: typeof submission.feedback === 'object' && submission.feedback !== null 
+        ? (submission.feedback as Record<string, string>) 
+        : {},
+      individual_scores: typeof submission.individual_scores === 'object' && submission.individual_scores !== null 
+        ? (submission.individual_scores as Record<string, number>) 
+        : {},
+    }));
+  } catch (error) {
+    console.error('Get exam submissions error:', error);
+    toast.error("Failed to fetch exam submissions");
+    throw error;
+  }
+}
+
+export async function submitExam(submission: Omit<ExamSubmission, "id">): Promise<ExamSubmission> {
+  try {
+    const { data, error } = await supabase
+      .from('exam_submissions')
+      .insert({
+        exam_id: submission.exam_id,
+        student_id: submission.student_id,
+        submitted_at: submission.submitted_at.toISOString(),
+        graded: submission.graded || false,
+        score: submission.score,
+        total_points: submission.total_points,
+        answers: submission.answers,
+        time_spent: submission.time_spent,
+        feedback: submission.feedback,
+        individual_scores: submission.individual_scores,
+      })
+      .select(`
+        *,
+        exams!inner(title),
+        profiles!inner(name)
+      `)
+      .single();
+
+    if (error) throw error;
+
+    toast.success("Exam submitted successfully");
+    return {
+      id: data.id,
+      exam_id: data.exam_id,
+      exam_title: data.exams?.title || submission.exam_title,
+      student_id: data.student_id,
+      student_name: data.profiles?.name || submission.student_name,
+      submitted_at: new Date(data.submitted_at),
+      graded: data.graded,
+      score: data.score,
+      total_points: data.total_points,
+      answers: typeof data.answers === 'object' && data.answers !== null 
+        ? (data.answers as Record<string, any>) 
+        : {},
+      time_spent: data.time_spent,
+      feedback: typeof data.feedback === 'object' && data.feedback !== null 
+        ? (data.feedback as Record<string, string>) 
+        : {},
+      individual_scores: typeof data.individual_scores === 'object' && data.individual_scores !== null 
+        ? (data.individual_scores as Record<string, number>) 
+        : {},
+    };
+  } catch (error) {
+    console.error('Submit exam error:', error);
+    toast.error("Failed to submit exam");
+    throw error;
+  }
+}
+
+export async function gradeSubmission(submissionId: string, grade: number, feedbackData: Record<string, string>): Promise<ExamSubmission> {
+  try {
+    const { data, error } = await supabase
+      .from('exam_submissions')
+      .update({
+        score: grade,
+        feedback: feedbackData,
+        graded: true,
+      })
+      .eq('id', submissionId)
+      .select(`
+        *,
+        exams!inner(title),
+        profiles!inner(name)
+      `)
+      .single();
+
+    if (error) throw error;
+
+    toast.success("Submission graded successfully");
+    return {
+      id: data.id,
+      exam_id: data.exam_id,
+      exam_title: data.exams?.title || 'Unknown Exam',
+      student_id: data.student_id,
+      student_name: data.profiles?.name || 'Unknown Student',
+      submitted_at: new Date(data.submitted_at),
+      graded: data.graded,
+      score: data.score,
+      total_points: data.total_points,
+      answers: typeof data.answers === 'object' && data.answers !== null 
+        ? (data.answers as Record<string, any>) 
+        : {},
+      time_spent: data.time_spent,
+      feedback: typeof data.feedback === 'object' && data.feedback !== null 
+        ? (data.feedback as Record<string, string>) 
+        : {},
+      individual_scores: typeof data.individual_scores === 'object' && data.individual_scores !== null 
+        ? (data.individual_scores as Record<string, number>) 
+        : {},
+    };
+  } catch (error) {
+    console.error('Grade submission error:', error);
+    toast.error("Failed to grade submission");
+    throw error;
+  }
+}
+
+// Forum categories functions
+export async function getForumCategories(): Promise<ForumCategory[]> {
+  try {
+    const { data, error } = await supabase
+      .from('forum_categories')
+      .select('*')
+      .order('name');
+
+    if (error) throw error;
+
+    return data.map(category => ({
+      id: category.id,
+      name: category.name,
+      description: category.description,
+      color: category.color,
+      created_at: new Date(category.created_at!),
+      created_by: category.created_by,
+    }));
+  } catch (error) {
+    console.error('Get forum categories error:', error);
+    toast.error("Failed to fetch forum categories");
+    throw error;
+  }
+}
+
+// Forum posts functions
+export async function getForumPosts(categoryId?: string): Promise<ForumPost[]> {
+  try {
+    let query = supabase
+      .from('forum_posts')
+      .select(`
+        *,
+        profiles!inner(name)
+      `)
+      .order('pinned', { ascending: false })
+      .order('created_at', { ascending: false });
+
+    if (categoryId) {
+      query = query.eq('category_id', categoryId);
     }
 
-    return data;
-  } catch (error: any) {
-    console.error('Error fetching profile:', error.message);
-    return null;
-  }
-};
+    const { data, error } = await query;
 
-export const createPasswordRecoveryRequest = async (email: string, reason?: string) => {
+    if (error) throw error;
+
+    return data.map(post => ({
+      id: post.id,
+      title: post.title,
+      content: post.content,
+      category_id: post.category_id,
+      author_id: post.author_id,
+      author_name: post.profiles?.name || 'Unknown User',
+      pinned: post.pinned,
+      locked: post.locked,
+      views: post.views,
+      created_at: new Date(post.created_at!),
+      updated_at: new Date(post.updated_at!),
+    }));
+  } catch (error) {
+    console.error('Get forum posts error:', error);
+    toast.error("Failed to fetch forum posts");
+    throw error;
+  }
+}
+
+export async function createForumPost(post: Omit<ForumPost, "id" | "author_name" | "views" | "created_at" | "updated_at">): Promise<ForumPost> {
   try {
-    console.log('Creating password recovery request for:', email);
-    
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('User not authenticated');
+
+    const { data, error } = await supabase
+      .from('forum_posts')
+      .insert({
+        title: post.title,
+        content: post.content,
+        category_id: post.category_id,
+        author_id: user.id,
+        pinned: post.pinned,
+        locked: post.locked,
+      })
+      .select(`
+        *,
+        profiles!inner(name)
+      `)
+      .single();
+
+    if (error) throw error;
+
+    toast.success("Post created successfully");
+    return {
+      id: data.id,
+      title: data.title,
+      content: data.content,
+      category_id: data.category_id,
+      author_id: data.author_id,
+      author_name: data.profiles?.name || 'Unknown User',
+      pinned: data.pinned,
+      locked: data.locked,
+      views: data.views,
+      created_at: new Date(data.created_at!),
+      updated_at: new Date(data.updated_at!),
+    };
+  } catch (error) {
+    console.error('Create forum post error:', error);
+    toast.error("Failed to create post");
+    throw error;
+  }
+}
+
+// Forum replies functions
+export async function getForumReplies(postId: string): Promise<ForumReply[]> {
+  try {
+    const { data, error } = await supabase
+      .from('forum_replies')
+      .select(`
+        *,
+        profiles!inner(name)
+      `)
+      .eq('post_id', postId)
+      .order('created_at');
+
+    if (error) throw error;
+
+    return data.map(reply => ({
+      id: reply.id,
+      content: reply.content,
+      post_id: reply.post_id,
+      author_id: reply.author_id,
+      author_name: reply.profiles?.name || 'Unknown User',
+      parent_id: reply.parent_id,
+      created_at: new Date(reply.created_at!),
+      updated_at: new Date(reply.updated_at!),
+    }));
+  } catch (error) {
+    console.error('Get forum replies error:', error);
+    toast.error("Failed to fetch replies");
+    throw error;
+  }
+}
+
+export async function createForumReply(reply: Omit<ForumReply, "id" | "author_name" | "created_at" | "updated_at">): Promise<ForumReply> {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('User not authenticated');
+
+    const { data, error } = await supabase
+      .from('forum_replies')
+      .insert({
+        content: reply.content,
+        post_id: reply.post_id,
+        author_id: user.id,
+        parent_id: reply.parent_id,
+      })
+      .select(`
+        *,
+        profiles!inner(name)
+      `)
+      .single();
+
+    if (error) throw error;
+
+    toast.success("Reply posted successfully");
+    return {
+      id: data.id,
+      content: data.content,
+      post_id: data.post_id,
+      author_id: data.author_id,
+      author_name: data.profiles?.name || 'Unknown User',
+      parent_id: data.parent_id,
+      created_at: new Date(data.created_at!),
+      updated_at: new Date(data.updated_at!),
+    };
+  } catch (error) {
+    console.error('Create forum reply error:', error);
+    toast.error("Failed to post reply");
+    throw error;
+  }
+}
+
+// Password Recovery Request Functions
+export interface PasswordRecoveryRequest {
+  id: string;
+  user_id: string;
+  user_email: string;
+  user_name: string;
+  reason?: string;
+  status: 'pending' | 'approved' | 'denied';
+  admin_id?: string;
+  admin_notes?: string;
+  temporary_password?: string;
+  created_at: Date;
+  updated_at: Date;
+  processed_at?: Date;
+}
+
+export async function createPasswordRecoveryRequest(email: string, reason?: string): Promise<void> {
+  try {
+    // First, check if a user with this email exists by trying to get their profile
+    const { data: profiles, error: profileError } = await supabase
+      .from('profiles')
+      .select('id, name')
+      .limit(1000); // Get all profiles to search by email
+
+    if (profileError) {
+      console.error('Error fetching profiles:', profileError);
+      throw new Error('Unable to process request');
+    }
+
+    // Since we don't store email in profiles table, we need to check auth users
+    // For now, we'll create the request with the email and let admin handle verification
     const { data, error } = await supabase
       .from('password_recovery_requests')
       .insert({
+        user_id: 'pending-verification', // We'll update this when admin processes
         user_email: email,
-        user_name: email.split('@')[0],
-        reason: reason || null,
+        user_name: email.split('@')[0], // Use email prefix as name initially
+        reason: reason,
         status: 'pending',
       })
       .select()
@@ -278,644 +1235,444 @@ export const createPasswordRecoveryRequest = async (email: string, reason?: stri
       throw error;
     }
 
-    console.log('Password recovery request created successfully:', data);
-    toast.success('Password recovery request submitted successfully. An administrator will review your request.');
-    return data;
-  } catch (error: any) {
-    console.error('Failed to create password recovery request:', error);
-    
-    let errorMessage = 'Failed to submit password recovery request. Please try again.';
-    
-    if (error.message?.includes('duplicate key')) {
-      errorMessage = 'A password recovery request for this email already exists. Please wait for an administrator to process it.';
-    } else if (error.message?.includes('invalid input syntax')) {
-      errorMessage = 'Invalid email format. Please check your email address.';
-    }
-    
-    toast.error(errorMessage);
+    toast.success("Password recovery request submitted successfully. An administrator will review your request.");
+  } catch (error) {
+    console.error('Create password recovery request error:', error);
+    toast.error("Failed to submit password recovery request");
     throw error;
   }
-};
+}
 
-// User management functions
-export const getUsers = async (): Promise<User[]> => {
-  try {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*');
-
-    if (error) {
-      console.error('Error fetching users:', error);
-      throw error;
-    }
-
-    return data?.map(profile => ({
-      id: profile.id,
-      email: profile.email || '',
-      name: profile.name,
-      role: profile.role,
-      avatar_url: profile.avatar_url,
-      slogan: profile.slogan,
-      bio: profile.bio,
-      phone: profile.phone,
-      location: profile.location,
-      social_links: profile.social_links,
-      created_at: profile.created_at,
-      updated_at: profile.updated_at,
-    })) || [];
-  } catch (error: any) {
-    console.error('Error fetching users:', error.message);
-    throw error;
-  }
-};
-
-export const registerUser = async (userData: { name: string; email: string; password: string; role: UserRole }) => {
-  try {
-    const { data, error } = await supabase.auth.signUp({
-      email: userData.email,
-      password: userData.password,
-      options: {
-        data: {
-          name: userData.name,
-          role: userData.role,
-        },
-      },
-    });
-
-    if (error) {
-      console.error('User registration failed:', error.message);
-      toast.error(`Registration failed: ${error.message}`);
-      throw error;
-    }
-
-    console.log('User registration successful:', data);
-    toast.success('User registered successfully!');
-    return data;
-  } catch (error: any) {
-    console.error('User registration error:', error.message);
-    toast.error(`Registration error: ${error.message}`);
-    throw error;
-  }
-};
-
-// Question management functions
-export const getQuestions = async (): Promise<Question[]> => {
-  try {
-    const { data, error } = await supabase
-      .from('questions')
-      .select('*')
-      .order('created_at', { ascending: false });
-
-    if (error) {
-      console.error('Error fetching questions:', error);
-      throw error;
-    }
-
-    return data?.map(q => ({
-      id: q.id,
-      content: q.content,
-      type: q.type,
-      options: q.options,
-      correctAnswer: q.correct_answer,
-      points: q.points,
-      category: q.category,
-      createdBy: q.created_by,
-      created_at: q.created_at,
-    })) || [];
-  } catch (error: any) {
-    console.error('Error fetching questions:', error.message);
-    return [];
-  }
-};
-
-export const createQuestion = async (questionData: Omit<Question, 'id' | 'created_at'>) => {
-  try {
-    const { data, error } = await supabase
-      .from('questions')
-      .insert({
-        content: questionData.content,
-        type: questionData.type,
-        options: questionData.options,
-        correct_answer: questionData.correctAnswer,
-        points: questionData.points,
-        category: questionData.category,
-        created_by: questionData.createdBy,
-      })
-      .select()
-      .single();
-
-    if (error) {
-      console.error('Error creating question:', error);
-      toast.error(`Failed to create question: ${error.message}`);
-      throw error;
-    }
-
-    console.log('Question created successfully:', data);
-    toast.success('Question created successfully!');
-    return data;
-  } catch (error: any) {
-    console.error('Error creating question:', error.message);
-    toast.error(`Error creating question: ${error.message}`);
-    throw error;
-  }
-};
-
-// Exam management functions
-export const getExams = async (): Promise<Exam[]> => {
-  try {
-    const { data, error } = await supabase
-      .from('exams')
-      .select('*')
-      .order('created_at', { ascending: false });
-
-    if (error) {
-      console.error('Error fetching exams:', error);
-      throw error;
-    }
-
-    return data || [];
-  } catch (error: any) {
-    console.error('Error fetching exams:', error.message);
-    return [];
-  }
-};
-
-export const updateExam = async (examId: string, updates: Partial<Exam>) => {
-  try {
-    const { data, error } = await supabase
-      .from('exams')
-      .update(updates)
-      .eq('id', examId)
-      .select()
-      .single();
-
-    if (error) {
-      console.error('Error updating exam:', error);
-      toast.error(`Failed to update exam: ${error.message}`);
-      throw error;
-    }
-
-    console.log('Exam updated successfully:', data);
-    toast.success('Exam updated successfully!');
-    return data;
-  } catch (error: any) {
-    console.error('Error updating exam:', error.message);
-    toast.error(`Error updating exam: ${error.message}`);
-    throw error;
-  }
-};
-
-export const submitExam = async (submitData: { exam_id: string; exam_title: string; student_id: string; student_name: string; answers: Record<string, any>; submitted_at: Date; time_spent: number; graded: boolean; score: number | undefined; total_points: number | undefined; feedback: any; individual_scores: any; }) => {
-  try {
-    const { data, error } = await supabase
-      .from('exam_submissions')
-      .insert(submitData)
-      .select()
-      .single();
-
-    if (error) {
-      console.error('Error submitting exam:', error);
-      toast.error(`Failed to submit exam: ${error.message}`);
-      throw error;
-    }
-
-    console.log('Exam submitted successfully:', data);
-    toast.success('Exam submitted successfully!');
-    return data;
-  } catch (error: any) {
-    console.error('Error submitting exam:', error.message);
-    toast.error(`Error submitting exam: ${error.message}`);
-    throw error;
-  }
-};
-
-export const getExamSubmissions = async () => {
-  try {
-    const { data, error } = await supabase
-      .from('exam_submissions')
-      .select('*')
-      .order('submitted_at', { ascending: false });
-
-    if (error) {
-      console.error('Error fetching exam submissions:', error);
-      throw error;
-    }
-
-    return data || [];
-  } catch (error: any) {
-    console.error('Error fetching exam submissions:', error.message);
-    return [];
-  }
-};
-
-// Task management functions
-export const getTasks = async (): Promise<Task[]> => {
-  try {
-    const { data, error } = await supabase
-      .from('tasks')
-      .select('*')
-      .order('created_at', { ascending: false });
-
-    if (error) {
-      console.error('Error fetching tasks:', error);
-      throw error;
-    }
-
-    return data || [];
-  } catch (error: any) {
-    console.error('Error fetching tasks:', error.message);
-    return [];
-  }
-};
-
-export const createTask = async (taskData: Omit<Task, 'id' | 'created_at'>) => {
-  try {
-    const { data, error } = await supabase
-      .from('tasks')
-      .insert(taskData)
-      .select()
-      .single();
-
-    if (error) {
-      console.error('Error creating task:', error);
-      toast.error(`Failed to create task: ${error.message}`);
-      throw error;
-    }
-
-    console.log('Task created successfully:', data);
-    toast.success('Task created successfully!');
-    return data;
-  } catch (error: any) {
-    console.error('Error creating task:', error.message);
-    toast.error(`Error creating task: ${error.message}`);
-    throw error;
-  }
-};
-
-export const updateTask = async (taskId: string, updates: Partial<Task>) => {
-  try {
-    const { data, error } = await supabase
-      .from('tasks')
-      .update(updates)
-      .eq('id', taskId)
-      .select()
-      .single();
-
-    if (error) {
-      console.error('Error updating task:', error);
-      toast.error(`Failed to update task: ${error.message}`);
-      throw error;
-    }
-
-    console.log('Task updated successfully:', data);
-    toast.success('Task updated successfully!');
-    return data;
-  } catch (error: any) {
-    console.error('Error updating task:', error.message);
-    toast.error(`Error updating task: ${error.message}`);
-    throw error;
-  }
-};
-
-export const deleteTask = async (taskId: string) => {
-  try {
-    const { error } = await supabase
-      .from('tasks')
-      .delete()
-      .eq('id', taskId);
-
-    if (error) {
-      console.error('Error deleting task:', error);
-      toast.error(`Failed to delete task: ${error.message}`);
-      throw error;
-    }
-
-    console.log('Task deleted successfully');
-    toast.success('Task deleted successfully!');
-  } catch (error: any) {
-    console.error('Error deleting task:', error.message);
-    toast.error(`Error deleting task: ${error.message}`);
-  }
-};
-
-// Password recovery functions
-export const getPasswordRecoveryRequests = async (): Promise<PasswordRecoveryRequest[]> => {
+export async function getPasswordRecoveryRequests(): Promise<PasswordRecoveryRequest[]> {
   try {
     const { data, error } = await supabase
       .from('password_recovery_requests')
       .select('*')
       .order('created_at', { ascending: false });
 
-    if (error) {
-      console.error('Error fetching password recovery requests:', error);
-      throw error;
+    if (error) throw error;
+
+    return data.map(request => ({
+      id: request.id,
+      user_id: request.user_id,
+      user_email: request.user_email,
+      user_name: request.user_name,
+      reason: request.reason,
+      status: request.status as 'pending' | 'approved' | 'denied',
+      admin_id: request.admin_id,
+      admin_notes: request.admin_notes,
+      temporary_password: request.temporary_password,
+      created_at: new Date(request.created_at),
+      updated_at: new Date(request.updated_at),
+      processed_at: request.processed_at ? new Date(request.processed_at) : undefined,
+    }));
+  } catch (error) {
+    console.error('Get password recovery requests error:', error);
+    toast.error("Failed to fetch password recovery requests");
+    throw error;
+  }
+}
+
+function generateTemporaryPassword(): string {
+  const length = 12;
+  const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*";
+  let password = "";
+  for (let i = 0; i < length; i++) {
+    password += charset.charAt(Math.floor(Math.random() * charset.length));
+  }
+  return password;
+}
+
+export async function processPasswordRecoveryRequest(
+  requestId: string, 
+  action: 'approve' | 'deny', 
+  adminNotes?: string
+): Promise<PasswordRecoveryRequest> {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('User not authenticated');
+
+    let updateData: any = {
+      status: action === 'approve' ? 'approved' : 'denied',
+      admin_id: user.id,
+      admin_notes: adminNotes,
+      processed_at: new Date().toISOString(),
+    };
+
+    if (action === 'approve') {
+      updateData.temporary_password = generateTemporaryPassword();
     }
 
-    return data || [];
-  } catch (error: any) {
-    console.error('Error fetching password recovery requests:', error.message);
-    return [];
-  }
-};
-
-export const processPasswordRecoveryRequest = async (requestId: string, action: 'approve' | 'reject', adminNotes?: string, temporaryPassword?: string) => {
-  try {
     const { data, error } = await supabase
       .from('password_recovery_requests')
-      .update({
-        status: action === 'approve' ? 'approved' : 'rejected',
-        admin_notes: adminNotes,
-        temporary_password: temporaryPassword,
-        processed_at: new Date().toISOString(),
-      })
+      .update(updateData)
       .eq('id', requestId)
       .select()
       .single();
 
-    if (error) {
-      console.error('Error processing password recovery request:', error);
-      toast.error(`Failed to process request: ${error.message}`);
-      throw error;
+    if (error) throw error;
+
+    // If approved, update the user's password
+    if (action === 'approve' && updateData.temporary_password) {
+      const { error: passwordError } = await supabase.auth.admin.updateUserById(
+        data.user_id,
+        { password: updateData.temporary_password }
+      );
+
+      if (passwordError) {
+        console.error('Failed to update user password:', passwordError);
+        toast.error("Request processed but failed to update password");
+      }
     }
 
-    console.log('Password recovery request processed successfully:', data);
-    toast.success(`Request ${action}d successfully!`);
-    return data;
-  } catch (error: any) {
-    console.error('Error processing password recovery request:', error.message);
-    toast.error(`Error processing request: ${error.message}`);
+    toast.success(`Password recovery request ${action}d successfully`);
+    return {
+      id: data.id,
+      user_id: data.user_id,
+      user_email: data.user_email,
+      user_name: data.user_name,
+      reason: data.reason,
+      status: data.status as 'pending' | 'approved' | 'denied',
+      admin_id: data.admin_id,
+      admin_notes: data.admin_notes,
+      temporary_password: data.temporary_password,
+      created_at: new Date(data.created_at),
+      updated_at: new Date(data.updated_at),
+      processed_at: new Date(data.processed_at),
+    };
+  } catch (error) {
+    console.error('Process password recovery request error:', error);
+    toast.error("Failed to process password recovery request");
     throw error;
   }
-};
+}
 
-// Chat functions
-export const sendChatRequest = async (receiverId: string, message: string) => {
+// Forum post likes functions
+export async function togglePostLike(postId: string): Promise<boolean> {
   try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('User not authenticated');
+
+    // Check if user already liked the post
+    const { data: existingLike } = await supabase
+      .from('forum_post_likes')
+      .select('id')
+      .eq('post_id', postId)
+      .eq('user_id', user.id)
+      .single();
+
+    if (existingLike) {
+      // Unlike the post
+      const { error } = await supabase
+        .from('forum_post_likes')
+        .delete()
+        .eq('post_id', postId)
+        .eq('user_id', user.id);
+
+      if (error) throw error;
+      return false; // Not liked anymore
+    } else {
+      // Like the post
+      const { error } = await supabase
+        .from('forum_post_likes')
+        .insert({
+          post_id: postId,
+          user_id: user.id,
+        });
+
+      if (error) throw error;
+      return true; // Liked
+    }
+  } catch (error) {
+    console.error('Toggle post like error:', error);
+    toast.error("Failed to toggle like");
+    throw error;
+  }
+}
+
+export async function getPostLikes(postId: string): Promise<{ count: number; isLiked: boolean }> {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    // Get total likes count
+    const { count, error: countError } = await supabase
+      .from('forum_post_likes')
+      .select('*', { count: 'exact', head: true })
+      .eq('post_id', postId);
+
+    if (countError) throw countError;
+
+    let isLiked = false;
+    if (user) {
+      // Check if current user liked the post
+      const { data: userLike } = await supabase
+        .from('forum_post_likes')
+        .select('id')
+        .eq('post_id', postId)
+        .eq('user_id', user.id)
+        .single();
+
+      isLiked = !!userLike;
+    }
+
+    return { count: count || 0, isLiked };
+  } catch (error) {
+    console.error('Get post likes error:', error);
+    return { count: 0, isLiked: false };
+  }
+}
+
+// Forum post comments functions
+export async function getPostComments(postId: string): Promise<any[]> {
+  try {
+    const { data, error } = await supabase
+      .from('forum_post_comments')
+      .select(`
+        *,
+        profiles!inner(name, avatar_url)
+      `)
+      .eq('post_id', postId)
+      .order('created_at');
+
+    if (error) throw error;
+
+    return data.map(comment => ({
+      id: comment.id,
+      content: comment.content,
+      author_id: comment.author_id,
+      author_name: comment.profiles?.name || 'Unknown User',
+      author_avatar: comment.profiles?.avatar_url,
+      created_at: new Date(comment.created_at!),
+      updated_at: new Date(comment.updated_at!),
+    }));
+  } catch (error) {
+    console.error('Get post comments error:', error);
+    toast.error("Failed to fetch comments");
+    throw error;
+  }
+}
+
+export async function createPostComment(postId: string, content: string): Promise<any> {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('User not authenticated');
+
+    const { data, error } = await supabase
+      .from('forum_post_comments')
+      .insert({
+        post_id: postId,
+        author_id: user.id,
+        content: content,
+      })
+      .select(`
+        *,
+        profiles!inner(name, avatar_url)
+      `)
+      .single();
+
+    if (error) throw error;
+
+    toast.success("Comment posted successfully");
+    return {
+      id: data.id,
+      content: data.content,
+      author_id: data.author_id,
+      author_name: data.profiles?.name || 'Unknown User',
+      author_avatar: data.profiles?.avatar_url,
+      created_at: new Date(data.created_at!),
+      updated_at: new Date(data.updated_at!),
+    };
+  } catch (error) {
+    console.error('Create post comment error:', error);
+    toast.error("Failed to post comment");
+    throw error;
+  }
+}
+
+// Chat request functions
+export async function sendChatRequest(receiverId: string, message?: string): Promise<any> {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('User not authenticated');
+
     const { data, error } = await supabase
       .from('chat_requests')
       .insert({
+        sender_id: user.id,
         receiver_id: receiverId,
         message: message,
-        status: 'pending',
       })
       .select()
       .single();
 
-    if (error) {
-      console.error('Error sending chat request:', error);
-      toast.error(`Failed to send chat request: ${error.message}`);
-      throw error;
-    }
+    if (error) throw error;
 
-    console.log('Chat request sent successfully:', data);
-    toast.success('Chat request sent successfully!');
+    toast.success("Chat request sent successfully");
     return data;
-  } catch (error: any) {
-    console.error('Error sending chat request:', error.message);
-    toast.error(`Error sending chat request: ${error.message}`);
+  } catch (error) {
+    console.error('Send chat request error:', error);
+    toast.error("Failed to send chat request");
     throw error;
   }
-};
+}
 
-export const getChatRequests = async (): Promise<ChatRequest[]> => {
+export async function getChatRequests(): Promise<any[]> {
   try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('User not authenticated');
+
     const { data, error } = await supabase
       .from('chat_requests')
-      .select('*')
+      .select(`
+        *,
+        sender:profiles!chat_requests_sender_id_fkey(name, avatar_url),
+        receiver:profiles!chat_requests_receiver_id_fkey(name, avatar_url)
+      `)
+      .or(`sender_id.eq.${user.id},receiver_id.eq.${user.id}`)
       .order('created_at', { ascending: false });
 
-    if (error) {
-      console.error('Error fetching chat requests:', error);
-      throw error;
-    }
+    if (error) throw error;
 
     return data || [];
-  } catch (error: any) {
-    console.error('Error fetching chat requests:', error.message);
-    return [];
+  } catch (error) {
+    console.error('Get chat requests error:', error);
+    toast.error("Failed to fetch chat requests");
+    throw error;
   }
-};
+}
 
-export const getPrivateChats = async (): Promise<PrivateChat[]> => {
+export async function respondToChatRequest(requestId: string, accept: boolean): Promise<any> {
   try {
-    const { data, error } = await supabase
-      .from('private_chats')
-      .select('*')
-      .order('updated_at', { ascending: false });
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('User not authenticated');
 
-    if (error) {
-      console.error('Error fetching private chats:', error);
-      throw error;
-    }
-
-    return data || [];
-  } catch (error: any) {
-    console.error('Error fetching private chats:', error.message);
-    return [];
-  }
-};
-
-export const respondToChatRequest = async (requestId: string, response: 'accept' | 'reject') => {
-  try {
     const { data, error } = await supabase
       .from('chat_requests')
       .update({
-        status: response === 'accept' ? 'accepted' : 'rejected',
+        status: accept ? 'accepted' : 'declined',
         responded_at: new Date().toISOString(),
       })
       .eq('id', requestId)
       .select()
       .single();
 
-    if (error) {
-      console.error('Error responding to chat request:', error);
-      toast.error(`Failed to respond to chat request: ${error.message}`);
-      throw error;
+    if (error) throw error;
+
+    if (accept) {
+      // Create a private chat
+      await createPrivateChat(data.sender_id, data.receiver_id);
     }
 
-    console.log('Chat request response sent successfully:', data);
-    toast.success(`Chat request ${response}ed successfully!`);
+    toast.success(`Chat request ${accept ? 'accepted' : 'declined'}`);
     return data;
-  } catch (error: any) {
-    console.error('Error responding to chat request:', error.message);
-    toast.error(`Error responding to chat request: ${error.message}`);
+  } catch (error) {
+    console.error('Respond to chat request error:', error);
+    toast.error("Failed to respond to chat request");
     throw error;
   }
-};
+}
 
-export const getChatMessages = async (chatId: string): Promise<ChatMessage[]> => {
+// Private chat functions
+export async function createPrivateChat(participant1: string, participant2: string): Promise<any> {
+  try {
+    const { data, error } = await supabase
+      .from('private_chats')
+      .upsert({
+        participant_1: participant1 < participant2 ? participant1 : participant2,
+        participant_2: participant1 < participant2 ? participant2 : participant1,
+      })
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  } catch (error) {
+    console.error('Create private chat error:', error);
+    throw error;
+  }
+}
+
+export async function getPrivateChats(): Promise<any[]> {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('User not authenticated');
+
+    const { data, error } = await supabase
+      .from('private_chats')
+      .select(`
+        *,
+        participant_1_profile:profiles!private_chats_participant_1_fkey(name, avatar_url),
+        participant_2_profile:profiles!private_chats_participant_2_fkey(name, avatar_url)
+      `)
+      .or(`participant_1.eq.${user.id},participant_2.eq.${user.id}`)
+      .order('updated_at', { ascending: false });
+
+    if (error) throw error;
+
+    return data?.map(chat => ({
+      ...chat,
+      other_participant: chat.participant_1 === user.id ? 
+        chat.participant_2_profile : 
+        chat.participant_1_profile,
+    })) || [];
+  } catch (error) {
+    console.error('Get private chats error:', error);
+    toast.error("Failed to fetch chats");
+    throw error;
+  }
+}
+
+export async function getChatMessages(chatId: string): Promise<any[]> {
   try {
     const { data, error } = await supabase
       .from('private_messages')
-      .select('*')
+      .select(`
+        *,
+        sender:profiles!private_messages_sender_id_fkey(name, avatar_url)
+      `)
       .eq('chat_id', chatId)
-      .order('created_at', { ascending: true });
+      .order('created_at');
 
-    if (error) {
-      console.error('Error fetching chat messages:', error);
-      throw error;
-    }
+    if (error) throw error;
 
     return data || [];
-  } catch (error: any) {
-    console.error('Error fetching chat messages:', error.message);
-    return [];
+  } catch (error) {
+    console.error('Get chat messages error:', error);
+    toast.error("Failed to fetch messages");
+    throw error;
   }
-};
+}
 
-export const sendMessage = async (chatId: string, content: string) => {
+export async function sendMessage(chatId: string, content: string): Promise<any> {
   try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('User not authenticated');
+
     const { data, error } = await supabase
       .from('private_messages')
       .insert({
         chat_id: chatId,
+        sender_id: user.id,
         content: content,
       })
-      .select()
-      .single();
-
-    if (error) {
-      console.error('Error sending message:', error);
-      toast.error(`Failed to send message: ${error.message}`);
-      throw error;
-    }
-
-    console.log('Message sent successfully:', data);
-    return data;
-  } catch (error: any) {
-    console.error('Error sending message:', error.message);
-    toast.error(`Error sending message: ${error.message}`);
-    throw error;
-  }
-};
-
-// Post functions
-export const getPostComments = async (postId: string): Promise<PostComment[]> => {
-  try {
-    const { data, error } = await supabase
-      .from('forum_post_comments')
       .select(`
         *,
-        profiles!forum_post_comments_author_id_fkey (
-          name,
-          avatar_url
-        )
+        sender:profiles!private_messages_sender_id_fkey(name, avatar_url)
       `)
-      .eq('post_id', postId)
-      .order('created_at', { ascending: true });
-
-    if (error) {
-      console.error('Error fetching post comments:', error);
-      throw error;
-    }
-
-    return data?.map(comment => ({
-      id: comment.id,
-      post_id: comment.post_id,
-      author_id: comment.author_id,
-      author_name: comment.profiles?.name || 'Unknown',
-      author_avatar: comment.profiles?.avatar_url,
-      content: comment.content,
-      created_at: comment.created_at,
-    })) || [];
-  } catch (error: any) {
-    console.error('Error fetching post comments:', error.message);
-    return [];
-  }
-};
-
-export const createPostComment = async (postId: string, content: string) => {
-  try {
-    const { data, error } = await supabase
-      .from('forum_post_comments')
-      .insert({
-        post_id: postId,
-        content: content,
-      })
-      .select()
       .single();
 
-    if (error) {
-      console.error('Error creating post comment:', error);
-      toast.error(`Failed to create comment: ${error.message}`);
-      throw error;
-    }
+    if (error) throw error;
 
-    console.log('Post comment created successfully:', data);
+    // Update chat's updated_at timestamp
+    await supabase
+      .from('private_chats')
+      .update({ updated_at: new Date().toISOString() })
+      .eq('id', chatId);
+
     return data;
-  } catch (error: any) {
-    console.error('Error creating post comment:', error.message);
-    toast.error(`Error creating comment: ${error.message}`);
+  } catch (error) {
+    console.error('Send message error:', error);
+    toast.error("Failed to send message");
     throw error;
   }
-};
-
-export const getPostLikes = async (postId: string) => {
-  try {
-    const { data, error } = await supabase
-      .from('forum_post_likes')
-      .select('*')
-      .eq('post_id', postId);
-
-    if (error) {
-      console.error('Error fetching post likes:', error);
-      throw error;
-    }
-
-    const count = data?.length || 0;
-    const currentUser = await getCurrentUser();
-    const isLiked = currentUser ? data?.some(like => like.user_id === currentUser.id) || false : false;
-
-    return { count, isLiked };
-  } catch (error: any) {
-    console.error('Error fetching post likes:', error.message);
-    return { count: 0, isLiked: false };
-  }
-};
-
-export const togglePostLike = async (postId: string) => {
-  try {
-    const currentUser = await getCurrentUser();
-    if (!currentUser) {
-      throw new Error('User not authenticated');
-    }
-
-    // Check if already liked
-    const { data: existingLike, error: checkError } = await supabase
-      .from('forum_post_likes')
-      .select('*')
-      .eq('post_id', postId)
-      .eq('user_id', currentUser.id)
-      .single();
-
-    if (checkError && checkError.code !== 'PGRST116') {
-      throw checkError;
-    }
-
-    if (existingLike) {
-      // Remove like
-      const { error } = await supabase
-        .from('forum_post_likes')
-        .delete()
-        .eq('post_id', postId)
-        .eq('user_id', currentUser.id);
-
-      if (error) throw error;
-    } else {
-      // Add like
-      const { error } = await supabase
-        .from('forum_post_likes')
-        .insert({
-          post_id: postId,
-          user_id: currentUser.id,
-        });
-
-      if (error) throw error;
-    }
-
-    return { success: true };
-  } catch (error: any) {
-    console.error('Error toggling post like:', error.message);
-    throw error;
-  }
-};
+}

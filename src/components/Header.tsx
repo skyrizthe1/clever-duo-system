@@ -172,9 +172,9 @@ export function Header() {
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" className="relative h-12 w-12 rounded-full hover:bg-white/15 transition-all duration-300 ring-2 ring-white/20 hover:ring-white/40">
                   <Avatar className="h-12 w-12 ring-2 ring-white/40 hover:ring-white/60 transition-all duration-300">
-                    <AvatarImage src={currentUser.avatar_url} alt={currentUser.name} />
+                    <AvatarImage src={currentUser.avatar} alt={currentUser.name} />
                     <AvatarFallback className="bg-gradient-to-r from-blue-600 to-purple-600 text-white font-bold text-lg">
-                      {getInitials(currentUser.name || currentUser.email)}
+                      {getInitials(currentUser.name)}
                     </AvatarFallback>
                   </Avatar>
                   {/* Online Status Indicator */}
@@ -187,13 +187,13 @@ export function Header() {
               <DropdownMenuContent className="w-64 bg-white/95 backdrop-blur-md border-blue-200 shadow-2xl rounded-2xl p-2" align="end" forceMount>
                 <div className="flex items-center justify-start gap-3 p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl mb-2">
                   <Avatar className="h-12 w-12">
-                    <AvatarImage src={currentUser.avatar_url} alt={currentUser.name} />
+                    <AvatarImage src={currentUser.avatar} alt={currentUser.name} />
                     <AvatarFallback className="bg-gradient-to-r from-blue-500 to-purple-500 text-white font-semibold">
-                      {getInitials(currentUser.name || currentUser.email)}
+                      {getInitials(currentUser.name)}
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex flex-col space-y-1 leading-none">
-                    <p className="font-semibold text-gray-900">{currentUser.name || currentUser.email}</p>
+                    <p className="font-semibold text-gray-900">{currentUser.name}</p>
                     <p className="text-sm text-gray-600 truncate">
                       {currentUser.email}
                     </p>

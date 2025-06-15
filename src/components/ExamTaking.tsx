@@ -88,7 +88,7 @@ export function ExamTaking({ exam, questions, open, onOpenChange, onSubmit }: Ex
         exam_id: exam.id,
         exam_title: exam.title,
         student_id: currentUser.id,
-        student_name: currentUser.name || currentUser.email,
+        student_name: currentUser.name,
         answers: answers,
         submitted_at: new Date(),
         time_spent: exam.duration * 60 - timeLeft,

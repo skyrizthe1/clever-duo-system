@@ -99,7 +99,7 @@ export function PostComments({ postId }: PostCommentsProps) {
                     <div className="flex items-center space-x-2 mb-1">
                       <p className="font-medium text-sm">{comment.author_name}</p>
                       <span className="text-xs text-gray-500">
-                        {formatDistanceToNow(new Date(comment.created_at))} ago
+                        {formatDistanceToNow(comment.created_at)} ago
                       </span>
                     </div>
                     <p className="text-sm text-gray-700">{comment.content}</p>
