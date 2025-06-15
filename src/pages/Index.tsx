@@ -1,5 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Header } from '@/components/Header';
 import { getCurrentUser } from '@/services/api';
 import { AdminDashboard } from '@/components/AdminDashboard';
@@ -17,21 +18,29 @@ interface User {
 const Index = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchUser = async () => {
       try {
         const user = await getCurrentUser();
+        if (!user) {
+          // No user found, redirect to login
+          navigate('/login');
+          return;
+        }
         setCurrentUser(user);
       } catch (error) {
         console.error('Error fetching current user:', error);
+        // If there's an error getting the user, redirect to login
+        navigate('/login');
       } finally {
         setIsLoading(false);
       }
     };
 
     fetchUser();
-  }, []);
+  }, [navigate]);
 
   if (isLoading) {
     return (
@@ -46,6 +55,11 @@ const Index = () => {
         </main>
       </div>
     );
+  }
+
+  // If no user after loading, this shouldn't render as we redirect above
+  if (!currentUser) {
+    return null;
   }
 
   return (
