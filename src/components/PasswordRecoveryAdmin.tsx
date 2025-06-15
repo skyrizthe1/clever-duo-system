@@ -1,251 +1,272 @@
 
 import React, { useState } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { createPasswordRecoveryRequest } from '@/services/api';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { getPasswordRecoveryRequests, processPasswordRecoveryRequest } from '@/services/api';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Textarea } from '@/components/ui/textarea';
-import { toast } from 'sonner';
-import {
-  Clock,
-  CheckCircle,
-  XCircle,
-  User,
-  Mail,
-  Calendar,
-  MessageSquare
-} from 'lucide-react';
+import { CheckCircle, XCircle, Clock, Eye } from 'lucide-react';
+import { PasswordRecoveryRequest } from '@/services/api';
 
-interface PasswordRecoveryAdminProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-}
-
-interface PasswordRecoveryRequest {
-  id: string;
-  user_name: string;
-  user_email: string;
-  reason: string;
-  status: 'pending' | 'approved' | 'rejected';
-  created_at: string;
-  processed_at?: string;
-  admin_notes?: string;
-}
-
-export function PasswordRecoveryAdmin({ open, onOpenChange }: PasswordRecoveryAdminProps) {
+export function PasswordRecoveryAdmin() {
   const [selectedRequest, setSelectedRequest] = useState<PasswordRecoveryRequest | null>(null);
   const [adminNotes, setAdminNotes] = useState('');
+  const [isProcessing, setIsProcessing] = useState(false);
   const queryClient = useQueryClient();
 
-  // Mock data for demonstration
-  const mockRequests: PasswordRecoveryRequest[] = [
-    {
-      id: '1',
-      user_name: 'John Doe',
-      user_email: 'john@example.com',
-      reason: 'Forgot password after long absence',
-      status: 'pending',
-      created_at: new Date().toISOString(),
-    },
-    {
-      id: '2',
-      user_name: 'Jane Smith',
-      user_email: 'jane@example.com',
-      reason: 'Account locked due to multiple failed attempts',
-      status: 'approved',
-      created_at: new Date(Date.now() - 86400000).toISOString(),
-      processed_at: new Date().toISOString(),
-      admin_notes: 'Verified identity via email'
-    }
-  ];
-
-  const { data: requests = mockRequests, isLoading } = useQuery({
-    queryKey: ['passwordRecoveryRequests'],
-    queryFn: async () => {
-      // This would normally fetch from the API
-      return mockRequests;
-    },
-    enabled: open
+  const { data: requests = [], isLoading } = useQuery({
+    queryKey: ['password-recovery-requests'],
+    queryFn: getPasswordRecoveryRequests
   });
 
-  const handleProcessRequest = async (requestId: string, action: 'approve' | 'reject') => {
-    try {
-      // In a real app, this would call the API
-      toast.success(`Request ${action}d successfully`);
-      queryClient.invalidateQueries({ queryKey: ['passwordRecoveryRequests'] });
+  const processMutation = useMutation({
+    mutationFn: ({ requestId, action, notes }: { requestId: string; action: 'approve' | 'deny'; notes?: string }) =>
+      processPasswordRecoveryRequest(requestId, action, notes),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['password-recovery-requests'] });
       setSelectedRequest(null);
       setAdminNotes('');
-    } catch (error) {
-      console.error('Failed to process request:', error);
-      toast.error(`Failed to ${action} request`);
-    }
+      setIsProcessing(false);
+    },
+    onError: () => {
+      setIsProcessing(false);
+    },
+  });
+
+  const handleViewRequest = (request: PasswordRecoveryRequest) => {
+    setSelectedRequest(request);
+    setAdminNotes(request.admin_notes || '');
   };
 
-  const getStatusIcon = (status: string) => {
+  const handleProcessRequest = async (action: 'approve' | 'deny') => {
+    if (!selectedRequest) return;
+    
+    setIsProcessing(true);
+    processMutation.mutate({
+      requestId: selectedRequest.id,
+      action,
+      notes: adminNotes.trim() || undefined,
+    });
+  };
+
+  const getStatusBadge = (status: string) => {
     switch (status) {
       case 'pending':
-        return <Clock className="h-4 w-4 text-yellow-600" />;
+        return <Badge variant="outline" className="text-yellow-600 border-yellow-600"><Clock className="w-3 h-3 mr-1" />Pending</Badge>;
       case 'approved':
-        return <CheckCircle className="h-4 w-4 text-green-600" />;
-      case 'rejected':
-        return <XCircle className="h-4 w-4 text-red-600" />;
+        return <Badge variant="outline" className="text-green-600 border-green-600"><CheckCircle className="w-3 h-3 mr-1" />Approved</Badge>;
+      case 'denied':
+        return <Badge variant="outline" className="text-red-600 border-red-600"><XCircle className="w-3 h-3 mr-1" />Denied</Badge>;
       default:
-        return <Clock className="h-4 w-4 text-gray-600" />;
+        return <Badge variant="outline">{status}</Badge>;
     }
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'pending':
-        return 'bg-yellow-100 text-yellow-800 border-yellow-200';
-      case 'approved':
-        return 'bg-green-100 text-green-800 border-green-200';
-      case 'rejected':
-        return 'bg-red-100 text-red-800 border-red-200';
-      default:
-        return 'bg-gray-100 text-gray-800 border-gray-200';
-    }
-  };
+  const pendingRequests = requests.filter(r => r.status === 'pending');
+  const processedRequests = requests.filter(r => r.status !== 'pending');
 
-  const pendingRequests = requests.filter(req => req.status === 'pending');
-  const processedRequests = requests.filter(req => req.status !== 'pending');
+  if (isLoading) {
+    return <div className="flex items-center justify-center p-8">Loading...</div>;
+  }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[900px] bg-white/95 backdrop-blur-sm max-h-[80vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="text-xl bg-gradient-to-r from-orange-600 to-red-600 bg-clip-text text-transparent">
-            Password Recovery Management
-          </DialogTitle>
-          <DialogDescription>
-            Review and process password recovery requests from users
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Pending Requests */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-gray-900">
-              Pending Requests ({pendingRequests.length})
-            </h3>
-            {pendingRequests.length === 0 ? (
-              <Card>
-                <CardContent className="p-6 text-center text-gray-500">
-                  No pending requests
-                </CardContent>
-              </Card>
-            ) : (
-              pendingRequests.map((request) => (
-                <Card key={request.id} className="cursor-pointer hover:shadow-md transition-shadow">
-                  <CardHeader className="pb-3">
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="text-sm flex items-center gap-2">
-                        <User className="h-4 w-4" />
-                        {request.user_name}
-                      </CardTitle>
-                      <Badge className={getStatusColor(request.status)}>
-                        {getStatusIcon(request.status)}
-                        <span className="ml-1 capitalize">{request.status}</span>
-                      </Badge>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2 text-sm text-gray-600">
-                        <Mail className="h-3 w-3" />
-                        {request.user_email}
-                      </div>
-                      <div className="flex items-center gap-2 text-sm text-gray-600">
-                        <Calendar className="h-3 w-3" />
-                        {new Date(request.created_at).toLocaleDateString()}
-                      </div>
-                      <div className="flex items-start gap-2 text-sm text-gray-600">
-                        <MessageSquare className="h-3 w-3 mt-1" />
-                        <span className="line-clamp-2">{request.reason}</span>
-                      </div>
-                    </div>
-                    <div className="flex gap-2 mt-4">
-                      <Button
-                        size="sm"
-                        onClick={() => handleProcessRequest(request.id, 'approve')}
-                        className="bg-green-600 hover:bg-green-700"
-                      >
-                        <CheckCircle className="h-3 w-3 mr-1" />
-                        Approve
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="destructive"
-                        onClick={() => handleProcessRequest(request.id, 'reject')}
-                      >
-                        <XCircle className="h-3 w-3 mr-1" />
-                        Reject
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))
-            )}
-          </div>
-
-          {/* Processed Requests */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-gray-900">
-              Recent Processed ({processedRequests.length})
-            </h3>
-            {processedRequests.length === 0 ? (
-              <Card>
-                <CardContent className="p-6 text-center text-gray-500">
-                  No processed requests
-                </CardContent>
-              </Card>
-            ) : (
-              processedRequests.slice(0, 5).map((request) => (
-                <Card key={request.id}>
-                  <CardHeader className="pb-3">
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="text-sm flex items-center gap-2">
-                        <User className="h-4 w-4" />
-                        {request.user_name}
-                      </CardTitle>
-                      <Badge className={getStatusColor(request.status)}>
-                        {getStatusIcon(request.status)}
-                        <span className="ml-1 capitalize">{request.status}</span>
-                      </Badge>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2 text-sm text-gray-600">
-                        <Mail className="h-3 w-3" />
-                        {request.user_email}
-                      </div>
-                      <div className="flex items-center gap-2 text-sm text-gray-600">
-                        <Calendar className="h-3 w-3" />
-                        Processed: {request.processed_at ? new Date(request.processed_at).toLocaleDateString() : 'N/A'}
-                      </div>
-                      {request.admin_notes && (
-                        <div className="flex items-start gap-2 text-sm text-gray-600">
-                          <MessageSquare className="h-3 w-3 mt-1" />
-                          <span className="line-clamp-2">{request.admin_notes}</span>
-                        </div>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              ))
-            )}
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-bold">Password Recovery Requests</h2>
+        <div className="flex items-center space-x-4">
+          <div className="text-sm text-gray-600">
+            Pending: <span className="font-semibold text-yellow-600">{pendingRequests.length}</span>
           </div>
         </div>
-      </DialogContent>
-    </Dialog>
+      </div>
+
+      {pendingRequests.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg text-yellow-700">Pending Requests</CardTitle>
+            <CardDescription>These requests require your attention</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>User</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Reason</TableHead>
+                  <TableHead>Requested</TableHead>
+                  <TableHead>Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {pendingRequests.map((request) => (
+                  <TableRow key={request.id}>
+                    <TableCell className="font-medium">{request.user_name}</TableCell>
+                    <TableCell>{request.user_email}</TableCell>
+                    <TableCell className="max-w-xs truncate">{request.reason || 'No reason provided'}</TableCell>
+                    <TableCell>{request.created_at.toLocaleDateString()}</TableCell>
+                    <TableCell>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleViewRequest(request)}
+                      >
+                        <Eye className="w-4 h-4 mr-1" />
+                        Review
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      )}
+
+      {processedRequests.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg">Processed Requests</CardTitle>
+            <CardDescription>Previously handled requests</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>User</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Processed</TableHead>
+                  <TableHead>Temp Password</TableHead>
+                  <TableHead>Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {processedRequests.map((request) => (
+                  <TableRow key={request.id}>
+                    <TableCell className="font-medium">{request.user_name}</TableCell>
+                    <TableCell>{request.user_email}</TableCell>
+                    <TableCell>{getStatusBadge(request.status)}</TableCell>
+                    <TableCell>{request.processed_at?.toLocaleDateString() || 'N/A'}</TableCell>
+                    <TableCell className="font-mono text-sm">
+                      {request.temporary_password ? '••••••••••••' : 'N/A'}
+                    </TableCell>
+                    <TableCell>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleViewRequest(request)}
+                      >
+                        <Eye className="w-4 h-4 mr-1" />
+                        View
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      )}
+
+      <Dialog open={!!selectedRequest} onOpenChange={() => setSelectedRequest(null)}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Password Recovery Request Details</DialogTitle>
+            <DialogDescription>
+              Review and process this password recovery request
+            </DialogDescription>
+          </DialogHeader>
+          
+          {selectedRequest && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div>
+                  <Label className="font-medium">User:</Label>
+                  <p>{selectedRequest.user_name}</p>
+                </div>
+                <div>
+                  <Label className="font-medium">Email:</Label>
+                  <p>{selectedRequest.user_email}</p>
+                </div>
+                <div>
+                  <Label className="font-medium">Status:</Label>
+                  <div className="mt-1">{getStatusBadge(selectedRequest.status)}</div>
+                </div>
+                <div>
+                  <Label className="font-medium">Requested:</Label>
+                  <p>{selectedRequest.created_at.toLocaleString()}</p>
+                </div>
+              </div>
+              
+              <div>
+                <Label className="font-medium">Reason:</Label>
+                <p className="text-sm text-gray-600 mt-1">
+                  {selectedRequest.reason || 'No reason provided'}
+                </p>
+              </div>
+
+              {selectedRequest.temporary_password && (
+                <div>
+                  <Label className="font-medium">Temporary Password:</Label>
+                  <p className="font-mono text-sm bg-gray-100 p-2 rounded mt-1">
+                    {selectedRequest.temporary_password}
+                  </p>
+                </div>
+              )}
+              
+              <div>
+                <Label htmlFor="adminNotes">Admin Notes:</Label>
+                <Textarea
+                  id="adminNotes"
+                  value={adminNotes}
+                  onChange={(e) => setAdminNotes(e.target.value)}
+                  placeholder="Add notes about this request..."
+                  rows={3}
+                  disabled={selectedRequest.status !== 'pending'}
+                />
+              </div>
+            </div>
+          )}
+          
+          {selectedRequest?.status === 'pending' && (
+            <DialogFooter className="space-x-2">
+              <Button
+                variant="outline"
+                onClick={() => handleProcessRequest('deny')}
+                disabled={isProcessing}
+              >
+                <XCircle className="w-4 h-4 mr-1" />
+                Deny
+              </Button>
+              <Button
+                onClick={() => handleProcessRequest('approve')}
+                disabled={isProcessing}
+              >
+                <CheckCircle className="w-4 h-4 mr-1" />
+                {isProcessing ? 'Processing...' : 'Approve & Reset Password'}
+              </Button>
+            </DialogFooter>
+          )}
+        </DialogContent>
+      </Dialog>
+    </div>
   );
 }

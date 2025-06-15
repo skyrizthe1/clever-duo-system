@@ -15,7 +15,6 @@ import Exams from "./pages/Exams";
 import MyExams from "./pages/MyExams";
 import Results from "./pages/Results";
 import Grading from "./pages/Grading";
-import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -39,7 +38,6 @@ function App() {
             <Route path="/my-exams" element={<MyExams />} />
             <Route path="/results" element={<Results />} />
             <Route path="/grading" element={<Grading />} />
-            <Route path="/settings" element={<Settings />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
