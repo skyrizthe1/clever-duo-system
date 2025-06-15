@@ -1205,10 +1205,13 @@ export interface PasswordRecoveryRequest {
 
 export async function createPasswordRecoveryRequest(email: string, reason?: string): Promise<void> {
   try {
+    // Use a special UUID that indicates pending verification
+    const pendingUserId = '00000000-0000-0000-0000-000000000000';
+    
     const { data, error } = await supabase
       .from('password_recovery_requests')
       .insert({
-        user_id: 'pending-verification', // Will be updated when admin processes
+        user_id: pendingUserId, // Use a valid UUID format for pending state
         user_email: email,
         user_name: email.split('@')[0], // Use email prefix as name initially
         reason: reason,
