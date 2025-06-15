@@ -1203,47 +1203,39 @@ export interface PasswordRecoveryRequest {
   processed_at?: Date;
 }
 
-export async function createPasswordRecoveryRequest(reason?: string): Promise<PasswordRecoveryRequest> {
+export async function createPasswordRecoveryRequest(email: string, reason?: string): Promise<void> {
   try {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('User not authenticated');
-
-    // Get user profile for name
-    const { data: profile } = await supabase
+    // First, check if a user with this email exists by trying to get their profile
+    const { data: profiles, error: profileError } = await supabase
       .from('profiles')
-      .select('name')
-      .eq('id', user.id)
-      .single();
+      .select('id, name')
+      .limit(1000); // Get all profiles to search by email
 
+    if (profileError) {
+      console.error('Error fetching profiles:', profileError);
+      throw new Error('Unable to process request');
+    }
+
+    // Since we don't store email in profiles table, we need to check auth users
+    // For now, we'll create the request with the email and let admin handle verification
     const { data, error } = await supabase
       .from('password_recovery_requests')
       .insert({
-        user_id: user.id,
-        user_email: user.email!,
-        user_name: profile?.name || user.email?.split('@')[0] || 'User',
+        user_id: 'pending-verification', // We'll update this when admin processes
+        user_email: email,
+        user_name: email.split('@')[0], // Use email prefix as name initially
         reason: reason,
         status: 'pending',
       })
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+      console.error('Error creating password recovery request:', error);
+      throw error;
+    }
 
-    toast.success("Password recovery request submitted successfully");
-    return {
-      id: data.id,
-      user_id: data.user_id,
-      user_email: data.user_email,
-      user_name: data.user_name,
-      reason: data.reason,
-      status: data.status as 'pending' | 'approved' | 'denied',
-      admin_id: data.admin_id,
-      admin_notes: data.admin_notes,
-      temporary_password: data.temporary_password,
-      created_at: new Date(data.created_at),
-      updated_at: new Date(data.updated_at),
-      processed_at: data.processed_at ? new Date(data.processed_at) : undefined,
-    };
+    toast.success("Password recovery request submitted successfully. An administrator will review your request.");
   } catch (error) {
     console.error('Create password recovery request error:', error);
     toast.error("Failed to submit password recovery request");

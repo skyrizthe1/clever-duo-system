@@ -21,18 +21,25 @@ interface PasswordRecoveryDialogProps {
 }
 
 export function PasswordRecoveryDialog({ open, onOpenChange }: PasswordRecoveryDialogProps) {
+  const [email, setEmail] = useState('');
   const [reason, setReason] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!email.trim()) {
+      toast.error('Please enter your email address');
+      return;
+    }
+
     setIsLoading(true);
     
     try {
-      await createPasswordRecoveryRequest(reason);
+      await createPasswordRecoveryRequest(email.trim(), reason.trim() || undefined);
+      setEmail('');
       setReason('');
       onOpenChange(false);
-      toast.success('Your password recovery request has been submitted and will be reviewed by an administrator.');
     } catch (error) {
       // Error already handled in the API function
     } finally {
@@ -47,10 +54,21 @@ export function PasswordRecoveryDialog({ open, onOpenChange }: PasswordRecoveryD
           <DialogTitle>Request Password Recovery</DialogTitle>
           <DialogDescription>
             Submit a request to have your password reset by an administrator. 
-            Please provide a reason for your request.
+            Please provide your email address and a reason for your request.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="email">Email Address</Label>
+            <Input
+              id="email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="Enter your email address"
+              required
+            />
+          </div>
           <div className="space-y-2">
             <Label htmlFor="reason">Reason for password reset (optional)</Label>
             <Textarea
