@@ -1207,14 +1207,17 @@ export async function createPasswordRecoveryRequest(email: string, reason?: stri
   try {
     console.log('Creating password recovery request for:', email);
     
+    // Use a special UUID to indicate this is a pending request without a verified user
+    const pendingUserId = '00000000-0000-0000-0000-000000000000';
+    
     const { data, error } = await supabase
       .from('password_recovery_requests')
       .insert({
+        user_id: pendingUserId,
         user_email: email,
         user_name: email.split('@')[0], // Use email prefix as name initially
         reason: reason,
         status: 'pending',
-        // Don't include user_id - let the database handle it
       })
       .select()
       .single();
